@@ -1,16 +1,37 @@
 """애플리케이션 설정 — 환경 변수 로딩."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# apps/api/app/core/config.py
+#   parents[0] = core/
+#   parents[1] = app/
+#   parents[2] = api/
+#   parents[3] = apps/
+#   parents[4] = campuson/ (repo root)
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_API_ROOT = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
-    """`.env` 파일과 환경 변수에서 설정을 로드합니다."""
+    """`.env` 파일과 환경 변수에서 설정을 로드합니다.
+
+    env 파일 탐색 우선순위
+    --------------------
+    1. `apps/api/.env` (API 전용 override가 있을 경우)
+    2. 프로젝트 루트 `campuson/.env` (기본 공유 설정)
+    3. 현재 작업 디렉토리의 `.env` (pytest 등 fallback)
+    """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(
+            _API_ROOT / ".env",
+            _REPO_ROOT / ".env",
+            ".env",
+        ),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
