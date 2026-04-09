@@ -46,3 +46,19 @@ class Level(str, enum.Enum):
     BEGINNER = "BEGINNER"
     INTERMEDIATE = "INTERMEDIATE"
     ADVANCED = "ADVANCED"
+
+
+class Difficulty(str, enum.Enum):
+    """문제 난이도."""
+
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
+
+
+class QuestionType(str, enum.Enum):
+    """문제 유형 — 객관식/단답형 등."""
+
+    SINGLE_CHOICE = "SINGLE_CHOICE"  # 객관식 단일 정답 (국시 대부분)
+    MULTI_CHOICE = "MULTI_CHOICE"  # 객관식 복수 정답
+    SHORT_ANSWER = "SHORT_ANSWER"  # 단답형 (현재 미사용, 향후)
