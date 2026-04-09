@@ -59,3 +59,10 @@ coverage/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# 원본 국가시험 PDF (저작권 — 로컬 보존만)
+data/nursing/*.pdf
+data/physical_therapy/*.pdf
+data/dental_hygiene/*.pdf
+# seed CSV는 포함
+!data/seed/*.csv

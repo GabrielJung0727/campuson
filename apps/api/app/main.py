@@ -10,6 +10,7 @@ from app import __version__
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.password_reset import router as password_reset_router
+from app.api.questions import router as questions_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.redis import close_redis, get_redis_client
@@ -68,6 +69,7 @@ app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(password_reset_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
+app.include_router(questions_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

@@ -109,3 +109,80 @@ export interface ApiError {
 export interface MessageResponse {
   message: string;
 }
+
+// =====================================================
+// Question API DTOs (Day 3 추가)
+// =====================================================
+
+export const Difficulty = {
+  EASY: 'EASY',
+  MEDIUM: 'MEDIUM',
+  HARD: 'HARD',
+} as const;
+export type Difficulty = (typeof Difficulty)[keyof typeof Difficulty];
+
+export const QuestionType = {
+  SINGLE_CHOICE: 'SINGLE_CHOICE',
+  MULTI_CHOICE: 'MULTI_CHOICE',
+  SHORT_ANSWER: 'SHORT_ANSWER',
+} as const;
+export type QuestionType = (typeof QuestionType)[keyof typeof QuestionType];
+
+export interface Question {
+  id: string;
+  department: Department;
+  subject: string;
+  unit: string | null;
+  difficulty: Difficulty;
+  question_type: QuestionType;
+  question_text: string;
+  choices: string[];
+  correct_answer: number;
+  explanation: string | null;
+  tags: string[];
+  source: string | null;
+  source_year: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuestionPublic {
+  id: string;
+  department: Department;
+  subject: string;
+  unit: string | null;
+  difficulty: Difficulty;
+  question_type: QuestionType;
+  question_text: string;
+  choices: string[];
+  tags: string[];
+}
+
+export interface QuestionListResponse {
+  items: Question[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+}
+
+export interface QuestionFilters {
+  department?: Department;
+  subject?: string;
+  unit?: string;
+  difficulty?: Difficulty;
+  question_type?: QuestionType;
+  tags?: string[];
+  tags_match_all?: boolean;
+  keyword?: string;
+  source_year?: number;
+  page?: number;
+  page_size?: number;
+}
+
+export interface BulkUploadResult {
+  total_rows: number;
+  inserted: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
+}
