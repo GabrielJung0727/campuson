@@ -80,3 +80,20 @@ class ErrorType(str, enum.Enum):
             ErrorType.CARELESS: "실수형",
             ErrorType.APPLICATION_GAP: "응용 부족형",
         }[self]
+
+
+class AIRequestType(str, enum.Enum):
+    """AI 요청 유형 — 프롬프트 템플릿과 1:1 매핑."""
+
+    QA = "QA"  # 자유 질의응답
+    EXPLAIN = "EXPLAIN"  # 문제 해설 생성
+    RECOMMEND = "RECOMMEND"  # 학습 추천
+    WEAKNESS_ANALYSIS = "WEAKNESS_ANALYSIS"  # 취약 영역 분석
+
+
+class LLMProvider(str, enum.Enum):
+    """LLM 제공자."""
+
+    ANTHROPIC = "ANTHROPIC"
+    OPENAI = "OPENAI"
+    MOCK = "MOCK"

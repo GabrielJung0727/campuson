@@ -51,6 +51,17 @@ class Settings(BaseSettings):
     audit_log_enabled: bool = True
     audit_log_skip_paths: str = "/,/docs,/redoc,/api/v1/openapi.json,/api/v1/health"
 
+    # --- LLM (Day 6부터 사용) ---
+    llm_provider: str = "mock"  # anthropic | openai | mock
+    llm_model: str = "claude-sonnet-4-6"
+    llm_max_tokens: int = 1024
+    llm_temperature: float = 0.3
+    llm_timeout_sec: float = 60.0
+    llm_max_retries: int = 3
+    anthropic_api_key: str = ""
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+
     @property
     def cors_origin_list(self) -> list[str]:
         """쉼표 구분 문자열을 리스트로 변환."""
