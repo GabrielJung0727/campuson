@@ -62,3 +62,21 @@ class QuestionType(str, enum.Enum):
     SINGLE_CHOICE = "SINGLE_CHOICE"  # 객관식 단일 정답 (국시 대부분)
     MULTI_CHOICE = "MULTI_CHOICE"  # 객관식 복수 정답
     SHORT_ANSWER = "SHORT_ANSWER"  # 단답형 (현재 미사용, 향후)
+
+
+class ErrorType(str, enum.Enum):
+    """오답 분류 — Day 5 룰 베이스, Day 9 이후 LLM으로 정교화 예정."""
+
+    CONCEPT_GAP = "CONCEPT_GAP"  # 개념 부족형 — 같은 문제 반복 오답
+    CONFUSION = "CONFUSION"  # 헷갈림형 — 일반 오답 (기본값)
+    CARELESS = "CARELESS"  # 실수형 — 매우 짧은 풀이 시간
+    APPLICATION_GAP = "APPLICATION_GAP"  # 응용 부족형 — 매우 긴 풀이 시간
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            ErrorType.CONCEPT_GAP: "개념 부족형",
+            ErrorType.CONFUSION: "헷갈림형",
+            ErrorType.CARELESS: "실수형",
+            ErrorType.APPLICATION_GAP: "응용 부족형",
+        }[self]

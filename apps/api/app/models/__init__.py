@@ -9,11 +9,13 @@ from app.models.diagnostic import DiagnosticAnswer, DiagnosticTest
 from app.models.enums import (
     Department,
     Difficulty,
+    ErrorType,
     Level,
     QuestionType,
     Role,
     UserStatus,
 )
+from app.models.learning_history import LearningHistory
 from app.models.question import Question
 from app.models.user import User
 
@@ -24,7 +26,9 @@ __all__ = [
     "DiagnosticAnswer",
     "DiagnosticTest",
     "Difficulty",
+    "ErrorType",
     "ExplanationPreference",
+    "LearningHistory",
     "Level",
     "Question",
     "QuestionType",
