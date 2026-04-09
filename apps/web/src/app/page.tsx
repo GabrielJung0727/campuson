@@ -29,13 +29,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">
-            ✅ Day 5 — Learning History
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
+            ✅ Day 6 — LLM Gateway
           </p>
-          <p className="mt-1 text-sm text-rose-900">
-            풀이 채점/저장 + 오답 자동 분류(개념/헷갈림/실수/응용) + 오답노트(반복 우선) +
-            학습 통계(일/주/월) 완료. Day 6부터 LLM 연동이 추가됩니다.
+          <p className="mt-1 text-sm text-indigo-900">
+            Anthropic/OpenAI/Mock provider 추상화 + 재시도/타임아웃 + 4종 프롬프트 템플릿 +
+            AIRequestLog(latency/토큰 추적) + 문제 해설/QA API 완료. Week 1 마무리 단계!
           </p>
         </div>
       </div>
