@@ -11,6 +11,14 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.schemas.common import ErrorResponse, MessageResponse
+from app.schemas.diagnostic import (
+    AIProfileResponse,
+    DiagnosticAnswerInput,
+    DiagnosticResultResponse,
+    DiagnosticStartResponse,
+    DiagnosticSubmitRequest,
+    WeakAreaItem,
+)
 from app.schemas.question import (
     BulkUploadResult,
     QuestionCreate,
@@ -22,8 +30,13 @@ from app.schemas.question import (
 from app.schemas.user import UserBase, UserMe, UserPublic
 
 __all__ = [
+    "AIProfileResponse",
     "AccessTokenResponse",
     "BulkUploadResult",
+    "DiagnosticAnswerInput",
+    "DiagnosticResultResponse",
+    "DiagnosticStartResponse",
+    "DiagnosticSubmitRequest",
     "ErrorResponse",
     "LoginRequest",
     "MessageResponse",
@@ -41,4 +54,5 @@ __all__ = [
     "UserBase",
     "UserMe",
     "UserPublic",
+    "WeakAreaItem",
 ]
