@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.auth import router as auth_router
+from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
 from app.api.password_reset import router as password_reset_router
 from app.api.questions import router as questions_router
@@ -70,6 +71,7 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(password_reset_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(questions_router, prefix=settings.api_prefix)
+app.include_router(diagnostic_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

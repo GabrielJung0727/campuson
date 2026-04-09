@@ -29,13 +29,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-sky-700">
-            ✅ Day 3 — Question Bank
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-violet-700">
+            ✅ Day 4 — Diagnostic Test
           </p>
-          <p className="mt-1 text-sm text-sky-900">
-            QuestionBank 테이블 + CRUD/필터/태그 검색 + CSV 일괄 업로드 완료.
-            샘플 200문항 시드(간호 80, 물치 60, 치위생 60). Day 4부터 진단 테스트가 추가됩니다.
+          <p className="mt-1 text-sm text-violet-900">
+            진단 테스트 시작/제출/채점 + 영역별 점수 + 취약영역 자동 추출 + AI 프로파일 자동 생성 완료.
+            학과별 30문항 자동 구성(EASY 30/MEDIUM 50/HARD 20). Day 5부터 학습 이력이 추가됩니다.
           </p>
         </div>
       </div>
