@@ -47,11 +47,19 @@ class Settings(BaseSettings):
     # --- Security ---
     bcrypt_rounds: int = 12
     password_min_length: int = 8
+    password_reset_token_expire_minutes: int = 30
+    audit_log_enabled: bool = True
+    audit_log_skip_paths: str = "/,/docs,/redoc,/api/v1/openapi.json,/api/v1/health"
 
     @property
     def cors_origin_list(self) -> list[str]:
         """쉼표 구분 문자열을 리스트로 변환."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def audit_log_skip_path_set(self) -> set[str]:
+        """감사 로그 제외 경로 집합."""
+        return {p.strip() for p in self.audit_log_skip_paths.split(",") if p.strip()}
 
 
 @lru_cache
