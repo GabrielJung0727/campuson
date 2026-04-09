@@ -97,3 +97,19 @@ class LLMProvider(str, enum.Enum):
     ANTHROPIC = "ANTHROPIC"
     OPENAI = "OPENAI"
     MOCK = "MOCK"
+
+
+class EmbeddingProvider(str, enum.Enum):
+    """임베딩 제공자 (Day 8)."""
+
+    OPENAI = "OPENAI"
+    MOCK = "MOCK"
+
+
+class KBReviewStatus(str, enum.Enum):
+    """지식베이스 문서 검수 상태 (Day 8)."""
+
+    DRAFT = "DRAFT"  # 초안, 적재 직후
+    REVIEWED = "REVIEWED"  # 교수 검수 완료
+    PUBLISHED = "PUBLISHED"  # 학생 노출 가능
+    ARCHIVED = "ARCHIVED"  # 보관 (검색 제외)

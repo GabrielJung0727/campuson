@@ -62,6 +62,20 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
 
+    # --- Embeddings (Day 8부터 사용) ---
+    embedding_provider: str = "mock"  # openai | mock
+    embedding_model: str = "text-embedding-3-small"
+    # pgvector HNSW 인덱스 차원 제한(<=2000)에 맞춘 기본값.
+    # text-embedding-3-large(3072)는 OpenAI `dimensions` 파라미터로 1536 축소 사용.
+    embedding_dimensions: int = 1536
+    embedding_batch_size: int = 96
+
+    # --- Chunking (Day 8) ---
+    chunk_target_tokens: int = 800
+    chunk_overlap_tokens: int = 150
+    chunk_min_tokens: int = 200
+    chunk_max_tokens: int = 1200
+
     @property
     def cors_origin_list(self) -> list[str]:
         """쉼표 구분 문자열을 리스트로 변환."""

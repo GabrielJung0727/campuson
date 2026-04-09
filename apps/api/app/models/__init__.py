@@ -11,13 +11,16 @@ from app.models.enums import (
     AIRequestType,
     Department,
     Difficulty,
+    EmbeddingProvider,
     ErrorType,
-    Level,
+    KBReviewStatus,
     LLMProvider,
+    Level,
     QuestionType,
     Role,
     UserStatus,
 )
+from app.models.kb_document import KBChunk, KBDocument
 from app.models.learning_history import LearningHistory
 from app.models.question import Question
 from app.models.user import User
@@ -31,8 +34,12 @@ __all__ = [
     "DiagnosticAnswer",
     "DiagnosticTest",
     "Difficulty",
+    "EmbeddingProvider",
     "ErrorType",
     "ExplanationPreference",
+    "KBChunk",
+    "KBDocument",
+    "KBReviewStatus",
     "LLMProvider",
     "LearningHistory",
     "Level",
