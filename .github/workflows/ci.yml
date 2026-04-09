@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  web-lint:
+    name: Web · Lint & Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run build:web
+
+  api-lint:
+    name: API · Lint & Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: campuson
+          POSTGRES_PASSWORD: campuson_dev_pw
+          POSTGRES_DB: campuson_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - working-directory: apps/api
+        run: |
+          pip install -r requirements.txt
+          ruff check .
+          black --check .
+      - working-directory: apps/api
+        env:
+          DATABASE_URL_SYNC: postgresql+psycopg2://campuson:campuson_dev_pw@localhost:5432/campuson_test
+        run: alembic upgrade head

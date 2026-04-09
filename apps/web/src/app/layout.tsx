@@ -1,0 +1,22 @@
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: {
+    default: 'CampusON',
+    template: '%s | CampusON',
+  },
+  description: '경복대학교 보건계열 학생을 위한 AI 학습튜터링 플랫폼',
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="ko">
+      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">{children}</body>
+    </html>
+  );
+}

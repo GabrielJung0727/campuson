@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run lint-staged for JS/TS/JSON/MD files and Python (if API files staged)
+npx lint-staged

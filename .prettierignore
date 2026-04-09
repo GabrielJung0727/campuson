@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+coverage/
+.venv/
+__pycache__/
+apps/api/alembic/versions/
+*.py
+postgres-data/
+redis-data/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
