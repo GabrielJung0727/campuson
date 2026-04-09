@@ -29,12 +29,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-            🚧 Day 1 — Foundation
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+            ✅ Day 2 — Auth & RBAC
           </p>
-          <p className="mt-1 text-sm text-amber-900">
-            모노레포 · Docker · DB 스키마 셋업 완료. Day 2부터 인증/RBAC가 추가됩니다.
+          <p className="mt-1 text-sm text-emerald-900">
+            JWT 회원가입/로그인 · RBAC 가드 · 학번 검증 · 비밀번호 재설정 · 감사 로그 완료.
+            Day 3부터 문제은행 CRUD가 추가됩니다.
           </p>
         </div>
       </div>

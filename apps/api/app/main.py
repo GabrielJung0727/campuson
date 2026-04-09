@@ -1,23 +1,45 @@
 """FastAPI 애플리케이션 엔트리포인트."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.password_reset import router as password_reset_router
+from app.api.users import router as users_router
 from app.core.config import settings
+from app.core.redis import close_redis, get_redis_client
+from app.middleware import AuditLogMiddleware
+
+logging.basicConfig(
+    level=settings.log_level,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """앱 시작/종료 훅."""
     # Startup
-    print(f"🚀 CampusON API v{__version__} starting in {settings.env} mode")
+    logger.info("🚀 CampusON API v%s starting in %s mode", __version__, settings.env)
+    # Redis ping (best-effort)
+    try:
+        redis = get_redis_client()
+        await redis.ping()
+        logger.info("✅ Redis connected")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("⚠️  Redis ping failed: %s", exc)
+
     yield
+
     # Shutdown
-    print("👋 CampusON API shutting down")
+    logger.info("👋 CampusON API shutting down")
+    await close_redis()
 
 
 app = FastAPI(
@@ -30,7 +52,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- CORS ---
+# --- Middleware (역순으로 등록 — 마지막에 등록한 것이 가장 바깥) ---
+# CORS는 가장 바깥쪽에 두는 것이 일반적
+app.add_middleware(AuditLogMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -41,6 +65,9 @@ app.add_middleware(
 
 # --- Routers ---
 app.include_router(health_router, prefix=settings.api_prefix)
+app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(password_reset_router, prefix=settings.api_prefix)
+app.include_router(users_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
