@@ -1,5 +1,13 @@
 """Pydantic 스키마 (request/response DTO)."""
 
+from app.schemas.ai import (
+    AIGenerationMetadata,
+    AIGenerationResponse,
+    AIRequestLogItem,
+    AIRequestLogListResponse,
+    ExplainRequest,
+    QARequest,
+)
 from app.schemas.auth import (
     AccessTokenResponse,
     LoginRequest,
@@ -42,7 +50,11 @@ from app.schemas.question import (
 from app.schemas.user import UserBase, UserMe, UserPublic
 
 __all__ = [
+    "AIGenerationMetadata",
+    "AIGenerationResponse",
     "AIProfileResponse",
+    "AIRequestLogItem",
+    "AIRequestLogListResponse",
     "AccessTokenResponse",
     "AnswerSubmitRequest",
     "AnswerSubmitResponse",
@@ -52,6 +64,7 @@ __all__ = [
     "DiagnosticStartResponse",
     "DiagnosticSubmitRequest",
     "ErrorResponse",
+    "ExplainRequest",
     "LearningHistoryItem",
     "LearningHistoryListResponse",
     "LearningStatsResponse",
@@ -60,6 +73,7 @@ __all__ = [
     "PasswordChangeRequest",
     "PasswordResetConfirm",
     "PasswordResetRequest",
+    "QARequest",
     "QuestionCreate",
     "QuestionListResponse",
     "QuestionPublic",
