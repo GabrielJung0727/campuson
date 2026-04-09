@@ -1,0 +1,412 @@
+{
+  "info": {
+    "_postman_id": "campuson-week1-collection",
+    "name": "CampusON API (Week 1)",
+    "description": "경복대학교 보건계열 AI 학습튜터링 플랫폼 — Week 1 (Day 1~7)에서 구현된 모든 엔드포인트.\n\n## 사용 흐름\n1. **Auth → Register** 실행 (response의 access_token이 자동으로 컬렉션 변수 `accessToken`에 저장됨)\n2. 이후 모든 요청은 `{{baseUrl}}` + `Bearer {{accessToken}}`을 사용\n3. **Diagnostic → Start** → **Submit** 순으로 진단 테스트 진행\n4. **History → Submit Answer** 로 풀이 제출\n5. **AI → Explain / QA** 로 LLM 호출 (Mock 모드 기본)\n\n## 환경 변수\n- `baseUrl` (기본 `http://localhost:8000/api/v1`)\n- `accessToken`, `refreshToken`, `userId`, `testId`, `questionId`, `historyId`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8000/api/v1"},
+    {"key": "accessToken", "value": ""},
+    {"key": "refreshToken", "value": ""},
+    {"key": "userId", "value": ""},
+    {"key": "testId", "value": ""},
+    {"key": "questionId", "value": ""},
+    {"key": "historyId", "value": ""}
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"]}
+          }
+        },
+        {
+          "name": "DB Readiness",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/health/db", "host": ["{{baseUrl}}"], "path": ["health", "db"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (Student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "  pm.collectionVariables.set('accessToken', data.access_token);",
+                  "  pm.collectionVariables.set('refreshToken', data.refresh_token);",
+                  "  pm.collectionVariables.set('userId', data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@kbu.ac.kr\",\n  \"password\": \"Test1234\",\n  \"name\": \"홍길동\",\n  \"department\": \"NURSING\",\n  \"role\": \"STUDENT\",\n  \"student_no\": \"24001234\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"]}
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.access_token) {",
+                  "  pm.collectionVariables.set('accessToken', data.access_token);",
+                  "  pm.collectionVariables.set('refreshToken', data.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@kbu.ac.kr\",\n  \"password\": \"Test1234\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"]}
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"]}
+          }
+        },
+        {
+          "name": "Password Reset Request",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@kbu.ac.kr\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/auth/password-reset/request", "host": ["{{baseUrl}}"], "path": ["auth", "password-reset", "request"]}
+          }
+        },
+        {
+          "name": "Password Reset Confirm",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<paste-from-dev-response>\",\n  \"new_password\": \"NewPass1234\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/auth/password-reset/confirm", "host": ["{{baseUrl}}"], "path": ["auth", "password-reset", "confirm"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"]}
+          }
+        },
+        {
+          "name": "Change My Password",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"Test1234\",\n  \"new_password\": \"NewTest1234\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/users/me/password", "host": ["{{baseUrl}}"], "path": ["users", "me", "password"]}
+          }
+        },
+        {
+          "name": "List Users (Professor/Admin)",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Questions",
+      "item": [
+        {
+          "name": "List & Filter",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/questions?department=NURSING&difficulty=MEDIUM&page=1&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions"],
+              "query": [
+                {"key": "department", "value": "NURSING"},
+                {"key": "difficulty", "value": "MEDIUM"},
+                {"key": "page", "value": "1"},
+                {"key": "page_size", "value": "20"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Subjects (distinct)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/questions/subjects?department=NURSING",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions", "subjects"],
+              "query": [{"key": "department", "value": "NURSING"}]
+            }
+          }
+        },
+        {
+          "name": "Get for Play (Student-safe)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/questions/{{questionId}}/play",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions", "{{questionId}}", "play"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Upload CSV (Admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/questions/bulk-upload?dry_run=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions", "bulk-upload"],
+              "query": [{"key": "dry_run", "value": "true"}]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "file", "type": "file", "src": "data/seed/questions_seed.csv"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Diagnostic",
+      "item": [
+        {
+          "name": "Start Diagnostic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.test_id) {",
+                  "  pm.collectionVariables.set('testId', data.test_id);",
+                  "  if (data.questions && data.questions.length > 0) {",
+                  "    pm.collectionVariables.set('questionId', data.questions[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{baseUrl}}/diagnostic/start", "host": ["{{baseUrl}}"], "path": ["diagnostic", "start"]}
+          }
+        },
+        {
+          "name": "Submit Diagnostic",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\"question_id\": \"{{questionId}}\", \"selected_choice\": 0, \"time_spent_sec\": 30}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/diagnostic/{{testId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["diagnostic", "{{testId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Get My Result",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/diagnostic/me", "host": ["{{baseUrl}}"], "path": ["diagnostic", "me"]}
+          }
+        },
+        {
+          "name": "Get My AI Profile",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/diagnostic/me/profile", "host": ["{{baseUrl}}"], "path": ["diagnostic", "me", "profile"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Learning History",
+      "item": [
+        {
+          "name": "Submit Answer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.history_id) pm.collectionVariables.set('historyId', data.history_id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question_id\": \"{{questionId}}\",\n  \"selected_choice\": 0,\n  \"solving_time_sec\": 35\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/history/answer", "host": ["{{baseUrl}}"], "path": ["history", "answer"]}
+          }
+        },
+        {
+          "name": "My History",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/history/me?page=1&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["history", "me"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "page_size", "value": "20"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wrong Answers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/history/wrong-answers?page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["history", "wrong-answers"],
+              "query": [{"key": "page", "value": "1"}]
+            }
+          }
+        },
+        {
+          "name": "Stats (Daily)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/history/stats?period=daily&days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["history", "stats"],
+              "query": [
+                {"key": "period", "value": "daily"},
+                {"key": "days", "value": "30"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Gateway Info",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/ai/info", "host": ["{{baseUrl}}"], "path": ["ai", "info"]}
+          }
+        },
+        {
+          "name": "Explain (with history)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question_id\": \"{{questionId}}\",\n  \"history_id\": \"{{historyId}}\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/ai/explain", "host": ["{{baseUrl}}"], "path": ["ai", "explain"]}
+          }
+        },
+        {
+          "name": "QA",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"심방세동의 정의와 가장 중요한 합병증을 설명해주세요.\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/ai/qa", "host": ["{{baseUrl}}"], "path": ["ai", "qa"]}
+          }
+        },
+        {
+          "name": "My AI Logs",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/ai/me/logs", "host": ["{{baseUrl}}"], "path": ["ai", "me", "logs"]}
+          }
+        },
+        {
+          "name": "All AI Logs (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/ai/logs", "host": ["{{baseUrl}}"], "path": ["ai", "logs"]}
+          }
+        }
+      ]
+    }
+  ]
+}

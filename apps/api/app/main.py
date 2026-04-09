@@ -46,13 +46,62 @@ async def lifespan(app: FastAPI):
     await close_redis()
 
 
+API_DESCRIPTION = """
+**CampusON** — 경복대학교 보건계열(간호·물리치료·치위생) 학생을 위한
+**AI 학습튜터링 플랫폼** 백엔드 API입니다.
+
+## 핵심 기능
+- 🔐 **Auth/RBAC** — JWT + 4단계 역할(STUDENT/PROFESSOR/ADMIN/DEVELOPER)
+- 📝 **문제은행** — 학과별 CRUD + 태그/필터 검색 + CSV 일괄 업로드
+- 🧪 **진단 테스트** — 학과별 30문항 자동 출제 + 채점 + 취약영역 추출
+- 📊 **학습 이력** — 풀이 채점 + 오답 자동 분류 + 오답노트 + 통계
+- 🤖 **AI 튜터** — LLM Gateway(Anthropic/OpenAI/Mock) + 4종 프롬프트 템플릿
+
+## 인증
+대부분의 엔드포인트는 `Authorization: Bearer <access_token>` 헤더가 필요합니다.
+토큰은 `POST /api/v1/auth/register` 또는 `POST /api/v1/auth/login`으로 발급받습니다.
+
+## 권한 체계
+- **STUDENT** — 본인 데이터만 열람/생성
+- **PROFESSOR** — 본인 학과 학생 데이터 열람
+- **ADMIN** — 학교 단위 운영 데이터, 문제은행 관리
+- **DEVELOPER** — 전체 + 시스템 로그/AI 호출 감사
+""".strip()
+
+TAGS_METADATA = [
+    {"name": "health", "description": "헬스체크 (livenes/readiness)"},
+    {"name": "auth", "description": "회원가입/로그인/토큰/비밀번호 재설정"},
+    {"name": "users", "description": "사용자 정보 조회/변경 (RBAC 적용)"},
+    {"name": "questions", "description": "문제은행 CRUD + 태그/필터 검색 + CSV 업로드"},
+    {
+        "name": "diagnostic",
+        "description": "진단 테스트 (1회 제한) + AI 프로파일 자동 생성",
+    },
+    {
+        "name": "learning-history",
+        "description": "풀이 채점/저장 + 오답 자동 분류 + 오답노트 + 학습 통계",
+    },
+    {
+        "name": "ai",
+        "description": "LLM 기반 문제 해설/QA + 호출 감사 로그 (Day 6)",
+    },
+]
+
+
 app = FastAPI(
     title="CampusON API",
-    description="경복대학교 보건계열 AI 학습튜터링 플랫폼 백엔드",
+    description=API_DESCRIPTION,
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url=f"{settings.api_prefix}/openapi.json",
+    openapi_tags=TAGS_METADATA,
+    contact={
+        "name": "CampusON Team",
+        "url": "https://www.notion.so/CampusON-AI-33d3748c8e9e80de8a5ccf9e72a350b6",
+    },
+    license_info={"name": "Proprietary (경복대학교)"},
+    swagger_ui_parameters={"persistAuthorization": True, "displayRequestDuration": True},
     lifespan=lifespan,
 )
 
