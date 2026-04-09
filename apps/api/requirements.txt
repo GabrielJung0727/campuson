@@ -17,7 +17,7 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 email-validator==2.2.0
 
-# --- Auth (Day 2부터 사용) ---
+# --- Auth (Day 2+) ---
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.10
@@ -28,7 +28,7 @@ httpx==0.27.2
 tenacity==9.0.0
 
 # --- LLM + Embeddings (Day 6, 8) ---
-# 환경에 키가 없으면 자동으로 mock provider가 활성화됩니다.
+# Falls back to mock provider when API keys are missing.
 anthropic==0.39.0
 openai==1.51.0
 tiktoken==0.8.0
