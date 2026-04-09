@@ -11,16 +11,30 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.schemas.common import ErrorResponse, MessageResponse
+from app.schemas.question import (
+    BulkUploadResult,
+    QuestionCreate,
+    QuestionListResponse,
+    QuestionPublic,
+    QuestionResponse,
+    QuestionUpdate,
+)
 from app.schemas.user import UserBase, UserMe, UserPublic
 
 __all__ = [
     "AccessTokenResponse",
+    "BulkUploadResult",
     "ErrorResponse",
     "LoginRequest",
     "MessageResponse",
     "PasswordChangeRequest",
     "PasswordResetConfirm",
     "PasswordResetRequest",
+    "QuestionCreate",
+    "QuestionListResponse",
+    "QuestionPublic",
+    "QuestionResponse",
+    "QuestionUpdate",
     "RefreshTokenRequest",
     "RegisterRequest",
     "TokenResponse",
