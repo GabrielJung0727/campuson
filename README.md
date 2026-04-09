@@ -66,7 +66,35 @@ npm run dev                     # http://localhost:3000
 
 - [Notion 프로젝트 페이지](https://www.notion.so/CampusON-AI-33d3748c8e9e80de8a5ccf9e72a350b6)
 - [ER 다이어그램](docs/diagrams/er-diagram.md)
-- [API 문서](http://localhost:8000/docs) (서버 실행 후)
+- [API 문서 (Swagger)](http://localhost:8000/docs) (서버 실행 후)
+- [API 문서 (ReDoc)](http://localhost:8000/redoc)
+- [Postman 컬렉션](docs/postman/CampusON.postman_collection.json) ([사용법](docs/postman/README.md))
+
+## 🧪 테스트
+
+```bash
+# 1. 테스트용 PostgreSQL DB 생성 (한 번만)
+docker compose up -d
+docker exec -it campuson-postgres psql -U campuson -c "CREATE DATABASE campuson_test;"
+docker exec -it campuson-postgres psql -U campuson -d campuson_test \
+  -c "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+# 2. 의존성 설치
+cd apps/api
+pip install -r requirements.txt
+
+# 3. 단위 테스트만 실행
+pytest tests/unit -v
+
+# 4. e2e 통합 테스트만 실행
+pytest tests/e2e -v
+
+# 5. 전체 (Day 7 최종 점검)
+pytest -v
+```
+
+CI에서는 GitHub Actions services로 PostgreSQL/Redis를 자동으로 띄우고
+`pytest -q`를 실행합니다 (`.github/workflows/ci.yml` 참고).
 
 ## 🧰 개발 명령어
 

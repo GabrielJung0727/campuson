@@ -29,13 +29,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
-            ✅ Day 6 — LLM Gateway
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+            🎉 Day 7 — Week 1 완료!
           </p>
-          <p className="mt-1 text-sm text-indigo-900">
-            Anthropic/OpenAI/Mock provider 추상화 + 재시도/타임아웃 + 4종 프롬프트 템플릿 +
-            AIRequestLog(latency/토큰 추적) + 문제 해설/QA API 완료. Week 1 마무리 단계!
+          <p className="mt-1 text-sm text-emerald-900">
+            pytest 단위/e2e 테스트 + OpenAPI 문서 강화 + Postman 컬렉션 + CI/CD 파이프라인 완료.
+            <strong className="font-semibold"> Week 1 백엔드 인프라 구축 완료!</strong> Day 8부터 Week 2 RAG/AI 코어 시작.
           </p>
         </div>
       </div>
