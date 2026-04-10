@@ -27,6 +27,7 @@ from app.schemas.ai import (
     AIGenerationResponse,
     AIRequestLogItem,
     AIRequestLogListResponse,
+    CitationItem,
     ExplainRequest,
     QARequest,
 )
@@ -74,7 +75,7 @@ async def explain(
     db: AsyncSession = Depends(get_db),
 ) -> AIGenerationResponse:
     try:
-        log, output = await explain_question(
+        result = await explain_question(
             db,
             current_user,
             payload.question_id,
@@ -91,16 +92,28 @@ async def explain(
 
     return AIGenerationResponse(
         request_type=AIRequestType.EXPLAIN,
-        output_text=output,
+        output_text=result.output_text,
         metadata=AIGenerationMetadata(
-            log_id=log.id,
-            provider=log.provider,
-            model=log.model,
-            template_name=log.template_name,
-            input_tokens=log.input_tokens,
-            output_tokens=log.output_tokens,
-            latency_ms=log.latency_ms,
+            log_id=result.log.id,
+            provider=result.log.provider,
+            model=result.log.model,
+            template_name=result.log.template_name,
+            input_tokens=result.log.input_tokens,
+            output_tokens=result.log.output_tokens,
+            latency_ms=result.log.latency_ms,
         ),
+        rag_used=result.rag_context_used,
+        citations=[
+            CitationItem(
+                number=c.number,
+                chunk_id=c.chunk_id,
+                document_id=c.document_id,
+                document_title=c.document_title,
+                source=c.source,
+                snippet=c.snippet,
+            )
+            for c in result.citations
+        ],
     )
 
 
@@ -116,7 +129,7 @@ async def qa(
     db: AsyncSession = Depends(get_db),
 ) -> AIGenerationResponse:
     try:
-        log, output = await answer_question(db, current_user, payload.question)
+        result = await answer_question(db, current_user, payload.question)
     except AIServiceError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
@@ -124,16 +137,28 @@ async def qa(
 
     return AIGenerationResponse(
         request_type=AIRequestType.QA,
-        output_text=output,
+        output_text=result.output_text,
         metadata=AIGenerationMetadata(
-            log_id=log.id,
-            provider=log.provider,
-            model=log.model,
-            template_name=log.template_name,
-            input_tokens=log.input_tokens,
-            output_tokens=log.output_tokens,
-            latency_ms=log.latency_ms,
+            log_id=result.log.id,
+            provider=result.log.provider,
+            model=result.log.model,
+            template_name=result.log.template_name,
+            input_tokens=result.log.input_tokens,
+            output_tokens=result.log.output_tokens,
+            latency_ms=result.log.latency_ms,
         ),
+        rag_used=result.rag_context_used,
+        citations=[
+            CitationItem(
+                number=c.number,
+                chunk_id=c.chunk_id,
+                document_id=c.document_id,
+                document_title=c.document_title,
+                source=c.source,
+                snippet=c.snippet,
+            )
+            for c in result.citations
+        ],
     )
 
 

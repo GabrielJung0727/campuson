@@ -38,12 +38,25 @@ class AIGenerationMetadata(BaseModel):
     latency_ms: int
 
 
+class CitationItem(BaseModel):
+    """답변 내 인용 1건 (Day 10 RAG)."""
+
+    number: int
+    chunk_id: str
+    document_id: str
+    document_title: str
+    source: str | None
+    snippet: str
+
+
 class AIGenerationResponse(BaseModel):
     """일반 LLM 응답 형식."""
 
     request_type: AIRequestType
     output_text: str
     metadata: AIGenerationMetadata
+    rag_used: bool = False
+    citations: list[CitationItem] = Field(default_factory=list)
 
 
 # === AI 요청 로그 조회 ===
