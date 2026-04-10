@@ -4,6 +4,7 @@ Alembic autogenerate가 모든 모델을 인식할 수 있도록 여기서 impor
 """
 
 from app.models.ai_profile import AIProfile, ExplanationPreference
+from app.models.assignment import Assignment, AssignmentSubmission, AssignmentStatus
 from app.models.ai_request_log import AIRequestLog
 from app.models.audit_log import AuditLog
 from app.models.diagnostic import DiagnosticAnswer, DiagnosticTest

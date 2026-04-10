@@ -160,4 +160,16 @@ export const api = {
   getClassStats: (classId: string) => apiFetch(`/classes/${classId}/stats`),
   getStudentDetail: (studentId: string) => apiFetch(`/classes/student-detail/${studentId}`),
   deleteClass: (classId: string) => apiFetch(`/classes/${classId}`, { method: 'DELETE' }),
+
+  // Assignments (v0.2)
+  getAssignments: () => apiFetch('/assignments'),
+  createAssignment: (body: Record<string, unknown>) =>
+    apiFetch('/assignments', { method: 'POST', body: JSON.stringify(body) }),
+  getAssignment: (id: string) => apiFetch(`/assignments/${id}`),
+  submitAssignment: (id: string, answers: unknown[]) =>
+    apiFetch(`/assignments/${id}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
+
+  // AI Generate (v0.2)
+  generateQuestions: (body: Record<string, unknown>) =>
+    apiFetch('/ai/generate-questions', { method: 'POST', body: JSON.stringify(body) }),
 };
