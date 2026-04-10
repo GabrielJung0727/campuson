@@ -5,7 +5,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models.enums import Department, Role, UserStatus
+from app.models.enums import (
+    AdminRole,
+    Department,
+    ProfessorRole,
+    Role,
+    StudentNationality,
+    UserStatus,
+)
 
 
 class UserBase(BaseModel):
@@ -25,6 +32,10 @@ class UserPublic(UserBase):
     student_no: str | None = None
     role: Role
     status: UserStatus
+    professor_role: ProfessorRole | None = None
+    admin_role: AdminRole | None = None
+    nationality: StudentNationality | None = None
+    grade: int | None = None
     created_at: datetime
     last_login_at: datetime | None = None
 

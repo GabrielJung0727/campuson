@@ -19,7 +19,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,11 +65,20 @@ class AnnouncementResponse(BaseModel):
 
 
 class RoleUpdateRequest(BaseModel):
+    model_config = ConfigDict(use_enum_values=False)
+
     role: Role | None = None
     professor_role: ProfessorRole | None = None
     admin_role: AdminRole | None = None
     nationality: StudentNationality | None = None
     grade: int | None = Field(default=None, ge=1, le=4)
+
+    # Track which fields were explicitly sent (including null)
+    _provided_fields: set[str] = set()
+
+    def __init__(self, **data: object) -> None:
+        super().__init__(**data)
+        object.__setattr__(self, '_provided_fields', set(data.keys()))
 
 
 # === 공지사항 ===
@@ -211,15 +220,16 @@ async def update_user_role(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if payload.role is not None:
+    provided = object.__getattribute__(payload, '_provided_fields')
+    if 'role' in provided:
         user.role = payload.role
-    if payload.professor_role is not None:
+    if 'professor_role' in provided:
         user.professor_role = payload.professor_role
-    if payload.admin_role is not None:
+    if 'admin_role' in provided:
         user.admin_role = payload.admin_role
-    if payload.nationality is not None:
+    if 'nationality' in provided:
         user.nationality = payload.nationality
-    if payload.grade is not None:
+    if 'grade' in provided:
         user.grade = payload.grade
 
     await db.flush()
