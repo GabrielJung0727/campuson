@@ -22,6 +22,7 @@ from app.models.enums import (
 )
 from app.models.kb_document import KBChunk, KBDocument
 from app.models.learning_history import LearningHistory
+from app.models.professor_class import ClassStudent, ProfessorClass
 from app.models.question import Question
 from app.models.question_stats import AnswerInteraction, QuestionStats
 from app.models.user import User

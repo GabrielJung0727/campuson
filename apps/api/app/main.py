@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
+from app.api.classes import router as classes_router
 from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
 from app.api.kb import router as kb_router
@@ -139,6 +140,7 @@ app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(kb_router, prefix=settings.api_prefix)
 app.include_router(recommendation_router, prefix=settings.api_prefix)
 app.include_router(stats_router, prefix=settings.api_prefix)
+app.include_router(classes_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

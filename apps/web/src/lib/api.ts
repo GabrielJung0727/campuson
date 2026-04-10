@@ -147,4 +147,17 @@ export const api = {
   // Stats (v0.2)
   getQuestionStats: (questionId: string) => apiFetch(`/stats/question/${questionId}`),
   getMyPercentile: () => apiFetch('/stats/percentile'),
+
+  // Classes (v0.2 교수)
+  getMyClasses: () => apiFetch('/classes'),
+  createClass: (body: Record<string, unknown>) =>
+    apiFetch('/classes', { method: 'POST', body: JSON.stringify(body) }),
+  getClassDetail: (id: string) => apiFetch(`/classes/${id}`),
+  addStudentToClass: (classId: string, body: Record<string, unknown>) =>
+    apiFetch(`/classes/${classId}/students`, { method: 'POST', body: JSON.stringify(body) }),
+  removeStudentFromClass: (classId: string, studentId: string) =>
+    apiFetch(`/classes/${classId}/students/${studentId}`, { method: 'DELETE' }),
+  getClassStats: (classId: string) => apiFetch(`/classes/${classId}/stats`),
+  getStudentDetail: (studentId: string) => apiFetch(`/classes/student-detail/${studentId}`),
+  deleteClass: (classId: string) => apiFetch(`/classes/${classId}`, { method: 'DELETE' }),
 };
