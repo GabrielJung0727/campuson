@@ -48,7 +48,7 @@ class QuestionStats(Base, UUIDPrimaryKeyMixin):
     choice_distribution: Mapped[dict] = mapped_column(
         JSONB,
         nullable=False,
-        server_default="'{}'",
+        server_default="{}",
         comment="선택지 인덱스별 선택 횟수",
     )
 
@@ -124,7 +124,7 @@ class AnswerInteraction(Base, UUIDPrimaryKeyMixin):
     choice_sequence: Mapped[list] = mapped_column(
         JSONB,
         nullable=False,
-        server_default="'[]'",
+        server_default="[]",
         comment="선택 이력: [{choice: 2, ts: 3400}, {choice: 0, ts: 8200}]",
     )
 

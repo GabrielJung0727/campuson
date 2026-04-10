@@ -1,10 +1,10 @@
 """학번 검증 로직.
 
-경복대학교 학번 형식은 학과/연도별로 다를 수 있으나, 본 MVP는 다음 정책을 적용한다.
+경복대학교 학번 형식: YY + 학과코드 + 일련번호 (예: 2455025 → 7자리)
 
 규칙
 ----
-1. 8~10자리 숫자
+1. 7~10자리 숫자 (경복대는 7자리)
 2. 첫 2자리는 입학년도(YY) — 현재 연도 기준 ±6년 범위
 3. 학과별 추가 검증은 향후 학교 측 데이터 협의 후 확장 가능
 
@@ -16,7 +16,7 @@ from datetime import datetime
 
 from app.models.enums import Department, Role
 
-STUDENT_NO_PATTERN = re.compile(r"^\d{8,10}$")
+STUDENT_NO_PATTERN = re.compile(r"^\d{7,10}$")
 ENROLLMENT_YEAR_RANGE_BACK = 6
 ENROLLMENT_YEAR_RANGE_FORWARD = 1
 
@@ -46,7 +46,7 @@ def validate_student_no(student_no: str, department: Department) -> None:
         raise StudentNoValidationError("학번이 비어있습니다.")
 
     if not STUDENT_NO_PATTERN.match(student_no):
-        raise StudentNoValidationError("학번은 8~10자리 숫자여야 합니다.")
+        raise StudentNoValidationError("학번은 7~10자리 숫자여야 합니다.")
 
     year_prefix = int(student_no[:2])
     current_year_yy = datetime.now().year % 100

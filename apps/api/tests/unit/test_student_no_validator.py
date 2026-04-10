@@ -16,21 +16,25 @@ from app.services.student_no_validator import (
 
 class TestStudentNoFormat:
     def test_valid_8_digit(self) -> None:
-        # 현재 연도 - 2 학번
         yy = (datetime.now().year - 2) % 100
         validate_student_no(f"{yy:02d}001234", Department.NURSING)
 
-    def test_too_short(self) -> None:
-        with pytest.raises(StudentNoValidationError, match="8~10자리"):
-            validate_student_no("1234567", Department.NURSING)
+    def test_valid_7_digit_kyungbok(self) -> None:
+        """경복대 7자리 학번 (예: 2455025)."""
+        yy = (datetime.now().year - 2) % 100
+        validate_student_no(f"{yy:02d}55025", Department.NURSING)
+
+    def test_too_short_6_digit(self) -> None:
+        with pytest.raises(StudentNoValidationError, match="7~10자리"):
+            validate_student_no("123456", Department.NURSING)
 
     def test_non_numeric(self) -> None:
-        with pytest.raises(StudentNoValidationError, match="8~10자리"):
-            validate_student_no("24abc123", Department.NURSING)
+        with pytest.raises(StudentNoValidationError, match="7~10자리"):
+            validate_student_no("24abc12", Department.NURSING)
 
     def test_year_too_old(self) -> None:
         with pytest.raises(StudentNoValidationError, match="입학년도"):
-            validate_student_no("90001234", Department.NURSING)
+            validate_student_no("9000123", Department.NURSING)
 
 
 class TestRolePolicy:
