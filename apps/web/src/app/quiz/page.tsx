@@ -24,6 +24,18 @@ interface AnswerResult {
   history_id: string;
 }
 
+interface QuestionStatsData {
+  total_attempts: number;
+  correct_count: number;
+  accuracy: number;
+  choice_distribution: Record<string, number>;
+}
+
+interface ChoiceEvent {
+  choice: number;
+  ts: number;
+}
+
 export default function QuizPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -35,6 +47,12 @@ export default function QuizPage() {
   const [startTime, setStartTime] = useState(Date.now());
   const [aiExplain, setAiExplain] = useState('');
   const [loadingExplain, setLoadingExplain] = useState(false);
+
+  // v0.2: 트래킹 + 통계
+  const [choiceEvents, setChoiceEvents] = useState<ChoiceEvent[]>([]);
+  const [firstChoice, setFirstChoice] = useState<number>(-1);
+  const [qStats, setQStats] = useState<QuestionStatsData | null>(null);
+  const [percentile, setPercentile] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -72,6 +90,15 @@ export default function QuizPage() {
 
   const q = questions[current];
 
+  // v0.2: 선택지 클릭 트래킹
+  function handleChoiceClick(idx: number) {
+    if (answered) return;
+    const ts = Date.now() - startTime;
+    if (firstChoice === -1) setFirstChoice(idx);
+    setChoiceEvents((prev) => [...prev, { choice: idx, ts }]);
+    setSelected(idx);
+  }
+
   async function handleSubmit() {
     if (selected === null || !q) return;
     setSolving(true);
@@ -81,8 +108,17 @@ export default function QuizPage() {
         question_id: q.id,
         selected_choice: selected,
         solving_time_sec: elapsed,
+        // v0.2 트래킹
+        time_to_first_click_ms: choiceEvents.length > 0 ? choiceEvents[0].ts : 0,
+        first_choice: firstChoice,
+        choice_changes: Math.max(0, choiceEvents.length - 1),
+        choice_sequence: choiceEvents,
       })) as AnswerResult;
       setAnswered(data);
+
+      // 통계 + 백분위 조회
+      api.getQuestionStats(q.id).then((s: unknown) => setQStats(s as QuestionStatsData)).catch(() => {});
+      api.getMyPercentile().then((p: unknown) => setPercentile((p as { overall_percentile: number }).overall_percentile)).catch(() => {});
     } catch {
       /* ignore */
     } finally {
@@ -106,11 +142,20 @@ export default function QuizPage() {
   }
 
   function handleNext() {
+    if (current >= questions.length - 1) {
+      router.push('/dashboard');
+      return;
+    }
     setAnswered(null);
     setSelected(null);
     setAiExplain('');
     setStartTime(Date.now());
-    setCurrent((c) => Math.min(c + 1, questions.length - 1));
+    setCurrent((c) => c + 1);
+    // v0.2: 트래킹 리셋
+    setChoiceEvents([]);
+    setFirstChoice(-1);
+    setQStats(null);
+    setPercentile(null);
   }
 
   if (loading) return <div className="p-8 text-center">로딩 중...</div>;
@@ -150,7 +195,7 @@ export default function QuizPage() {
             return (
               <button
                 key={idx}
-                onClick={() => !answered && setSelected(idx)}
+                onClick={() => handleChoiceClick(idx)}
                 disabled={!!answered}
                 className={`w-full rounded-lg border p-3 text-left text-sm transition ${style}`}
               >
@@ -187,6 +232,62 @@ export default function QuizPage() {
               <p className="mt-2 text-sm">{answered.explanation}</p>
             )}
           </div>
+
+          {/* v0.2: 문항 통계 + 백분위 */}
+          {qStats && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-700">
+                  약 {qStats.total_attempts}명의 학생 중{' '}
+                  <span className="text-emerald-600">{qStats.correct_count}명({Math.round(qStats.accuracy * 100)}%)</span>이 맞췄어요
+                </span>
+                {percentile !== null && (
+                  <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
+                    상위 {100 - percentile}%
+                  </span>
+                )}
+              </div>
+              {/* 선택지별 선택률 바 */}
+              <div className="space-y-1.5">
+                {q.choices.map((choice, idx) => {
+                  const count = qStats.choice_distribution[String(idx)] || 0;
+                  const pct = qStats.total_attempts > 0 ? Math.round((count / qStats.total_attempts) * 100) : 0;
+                  const isCorrect = answered && idx === answered.correct_answer;
+                  const isWrong = answered && idx === selected && !answered.is_correct;
+                  return (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      <span className="w-6 text-right font-mono text-slate-400">{idx + 1}.</span>
+                      <div className="flex-1">
+                        <div className="relative h-5 w-full rounded bg-slate-100">
+                          <div
+                            className={`h-5 rounded transition-all ${
+                              isCorrect ? 'bg-emerald-400' : isWrong ? 'bg-red-300' : 'bg-slate-300'
+                            }`}
+                            style={{ width: `${Math.max(pct, 2)}%` }}
+                          />
+                          <span className="absolute inset-0 flex items-center px-2 text-[10px]">
+                            {choice.length > 30 ? choice.slice(0, 30) + '...' : choice}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`w-10 text-right font-mono ${isCorrect ? 'font-bold text-emerald-700' : ''}`}>
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 트래킹 피드백 */}
+              {choiceEvents.length > 1 && (
+                <p className="mt-2 text-xs text-amber-600">
+                  💡 답을 {choiceEvents.length - 1}번 바꾸셨네요.
+                  {firstChoice !== -1 && answered && firstChoice === answered.correct_answer && !answered.is_correct
+                    ? ' 처음 선택이 정답이었어요! 다음엔 첫 직감을 믿어보세요.'
+                    : ''}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* AI Explain */}
           {!aiExplain ? (

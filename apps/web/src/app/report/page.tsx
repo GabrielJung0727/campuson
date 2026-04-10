@@ -39,6 +39,12 @@ export default function ReportPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [percentile, setPercentile] = useState<{
+    overall_percentile: number;
+    overall_accuracy: number;
+    total_students: number;
+    subject_percentiles: Record<string, { percentile: number; accuracy: number; total: number }>;
+  } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -48,6 +54,7 @@ export default function ReportPage() {
     if (user) {
       api.getMyStats(`period=${period}&days=90`).then((d: unknown) => setStats(d as Stats)).catch(() => {});
       api.getMyProfile().then((d: unknown) => setProfile(d as Record<string, unknown>)).catch(() => {});
+      api.getMyPercentile().then((d: unknown) => setPercentile(d as typeof percentile)).catch(() => {});
     }
   }, [user, period]);
 
@@ -82,6 +89,36 @@ export default function ReportPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* v0.2: 백분위 카드 */}
+      {percentile && percentile.total_students > 0 && (
+        <div className="mb-6 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-slate-500">학과 내 나의 순위</div>
+              <div className="mt-1 text-4xl font-bold text-brand-700">
+                상위 {100 - percentile.overall_percentile}%
+              </div>
+              <div className="mt-1 text-xs text-slate-400">
+                {percentile.total_students}명 중 정답률 {Math.round(percentile.overall_accuracy * 100)}%
+              </div>
+            </div>
+            <div className="text-6xl opacity-20">🏆</div>
+          </div>
+          {/* 과목별 백분위 */}
+          {Object.keys(percentile.subject_percentiles).length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
+              {Object.entries(percentile.subject_percentiles).map(([subj, data]) => (
+                <div key={subj} className="rounded-lg bg-white p-2 text-center text-xs shadow-sm">
+                  <div className="font-medium text-slate-700">{subj}</div>
+                  <div className="text-lg font-bold text-brand-600">상위 {100 - data.percentile}%</div>
+                  <div className="text-slate-400">{Math.round(data.accuracy * 100)}% ({data.total}명)</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

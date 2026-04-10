@@ -71,6 +71,28 @@ async def submit_answer_endpoint(
     except HistoryError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    # v0.2: 트래킹 저장 + 통계 갱신
+    try:
+        from app.services.stats_service import save_interaction, update_question_stats
+
+        await save_interaction(
+            db,
+            history_id=history.id,
+            question_id=question.id,
+            user_id=current_user.id,
+            time_spent_sec=payload.solving_time_sec,
+            time_to_first_click_ms=payload.time_to_first_click_ms,
+            first_choice=payload.first_choice,
+            final_choice=payload.selected_choice,
+            choice_changes=payload.choice_changes,
+            choice_sequence=[e.model_dump() for e in payload.choice_sequence],
+        )
+        await update_question_stats(db, question.id)
+    except Exception:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).exception("Tracking/stats update failed (non-blocking)")
+
     return AnswerSubmitResponse(
         history_id=history.id,
         question_id=question.id,

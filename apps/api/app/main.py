@@ -16,6 +16,7 @@ from app.api.learning_history import router as learning_history_router
 from app.api.password_reset import router as password_reset_router
 from app.api.questions import router as questions_router
 from app.api.recommendation import router as recommendation_router
+from app.api.stats import router as stats_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.redis import close_redis, get_redis_client
@@ -137,6 +138,7 @@ app.include_router(learning_history_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(kb_router, prefix=settings.api_prefix)
 app.include_router(recommendation_router, prefix=settings.api_prefix)
+app.include_router(stats_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

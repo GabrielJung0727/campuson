@@ -11,12 +11,24 @@ from app.schemas.question import QuestionPublic
 
 
 # === 풀이 제출 ===
+class ChoiceEvent(BaseModel):
+    """선택지 클릭 이벤트 1건."""
+
+    choice: int = Field(..., ge=0)
+    ts: int = Field(..., ge=0, description="문제 진입 후 경과 시간 (ms)")
+
+
 class AnswerSubmitRequest(BaseModel):
-    """문제 풀이 제출 요청."""
+    """문제 풀이 제출 요청 (v0.2: 트래킹 포함)."""
 
     question_id: uuid.UUID
     selected_choice: int = Field(..., ge=0)
     solving_time_sec: int = Field(default=0, ge=0)
+    # v0.2 트래킹 (선택적 — 없으면 무시)
+    time_to_first_click_ms: int = Field(default=0, ge=0)
+    first_choice: int = Field(default=-1, ge=-1)
+    choice_changes: int = Field(default=0, ge=0)
+    choice_sequence: list[ChoiceEvent] = Field(default_factory=list)
 
 
 class AnswerSubmitResponse(BaseModel):

@@ -143,4 +143,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ set_size: setSize }),
     }),
+
+  // Stats (v0.2)
+  getQuestionStats: (questionId: string) => apiFetch(`/stats/question/${questionId}`),
+  getMyPercentile: () => apiFetch('/stats/percentile'),
 };
