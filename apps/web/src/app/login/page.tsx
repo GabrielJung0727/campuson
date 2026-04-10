@@ -12,16 +12,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setNeedsVerification(false);
     setLoading(true);
     try {
       await login(email, password);
       router.push('/dashboard');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+      const msg = err instanceof Error ? err.message : '로그인에 실패했습니다.';
+      setError(msg);
+      if (msg.includes('이메일 인증')) {
+        setNeedsVerification(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -42,7 +48,19 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold">로그인</h2>
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {error}
+              {needsVerification && (
+                <div className="mt-2">
+                  <Link
+                    href={`/register?verify=${encodeURIComponent(email)}`}
+                    className="font-semibold text-brand-600 underline"
+                  >
+                    이메일 인증하기 →
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
 
           <div>
