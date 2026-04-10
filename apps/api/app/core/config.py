@@ -83,6 +83,17 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
 
+    # --- SMTP Email ---
+    smtp_enabled: bool = False
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "CampusON"
+    smtp_use_tls: bool = True
+    email_verification_code_expire_minutes: int = 10
+
     # --- Embeddings (Day 8부터 사용) ---
     embedding_provider: str = "mock"  # openai | mock
     embedding_model: str = "text-embedding-3-small"

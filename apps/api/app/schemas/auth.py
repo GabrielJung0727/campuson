@@ -72,3 +72,25 @@ class PasswordChangeRequest(BaseModel):
 
     current_password: str
     new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class VerifyEmailRequest(BaseModel):
+    """이메일 인증코드 검증."""
+
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class ResendVerificationRequest(BaseModel):
+    """인증코드 재발송 요청."""
+
+    email: EmailStr
+
+
+class RegisterResponse(BaseModel):
+    """회원가입 응답 — 이메일 인증이 필요한 경우."""
+
+    message: str
+    user_id: str
+    email: str
+    requires_verification: bool = True

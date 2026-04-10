@@ -1,6 +1,8 @@
-"""인증 서비스 — 회원가입/로그인/토큰 재발급/비밀번호 변경/재설정."""
+"""인증 서비스 — 회원가입/로그인/토큰 재발급/비밀번호 변경/재설정 + 이메일 인증."""
 
 import logging
+import random
+import string
 import uuid
 from datetime import UTC, datetime
 
@@ -32,6 +34,12 @@ from app.services.student_no_validator import (
 logger = logging.getLogger(__name__)
 
 PASSWORD_RESET_KEY_PREFIX = "pwreset:"
+EMAIL_VERIFY_KEY_PREFIX = "emailverify:"
+
+
+def _generate_6digit_code() -> str:
+    """6자리 숫자 인증코드 생성."""
+    return "".join(random.choices(string.digits, k=6))
 
 
 class AuthError(Exception):
@@ -99,8 +107,9 @@ async def register_user(db: AsyncSession, payload: RegisterRequest) -> User:
         if existing_student is not None:
             raise StudentNoAlreadyExistsError("이미 가입된 학번입니다.")
 
-    # PENDING으로 시작 (개발 환경은 즉시 ACTIVE)
-    initial_status = UserStatus.ACTIVE if settings.env == "development" else UserStatus.PENDING
+    # 이메일 인증 전까지 항상 PENDING. SMTP 비활성 + 개발 환경이면 즉시 ACTIVE+verified.
+    skip_verification = not settings.smtp_enabled and settings.env == "development"
+    initial_status = UserStatus.ACTIVE if skip_verification else UserStatus.PENDING
 
     user = User(
         email=payload.email.lower(),
@@ -110,6 +119,8 @@ async def register_user(db: AsyncSession, payload: RegisterRequest) -> User:
         department=payload.department,
         role=payload.role,
         status=initial_status,
+        email_verified=skip_verification,
+        email_verified_at=datetime.now(UTC) if skip_verification else None,
     )
     db.add(user)
     try:
@@ -138,6 +149,11 @@ async def authenticate_user(db: AsyncSession, payload: LoginRequest) -> User:
 
     if user.status == UserStatus.DELETED:
         raise InvalidCredentialsError("이메일 또는 비밀번호가 올바르지 않습니다.")
+
+    if not user.email_verified:
+        raise AccountInactiveError(
+            "이메일 인증을 완료해주세요. 가입 시 입력한 이메일에서 인증코드를 확인하세요."
+        )
 
     if user.status != UserStatus.ACTIVE:
         raise AccountInactiveError(
@@ -204,6 +220,16 @@ async def change_password(
     user.password_hash = hash_password(new_password)
     await db.flush()
 
+    # 비밀번호 변경 알림 메일
+    from app.core.email import send_email
+    from app.core.email_templates import password_changed_email
+
+    await send_email(
+        user.email,
+        "[CampusON] 비밀번호가 변경되었습니다",
+        password_changed_email(user.name),
+    )
+
 
 # --- 비밀번호 재설정 (이메일 토큰) ---
 async def request_password_reset(
@@ -234,12 +260,18 @@ async def request_password_reset(
     ttl_seconds = settings.password_reset_token_expire_minutes * 60
     await redis.setex(key, ttl_seconds, str(user.id))
 
-    # TODO: 실제 이메일 발송 모듈 연동 (Day 14 또는 그 이전)
-    logger.warning(
-        "[MOCK EMAIL] Password reset token for %s: %s (expires in %d minutes)",
+    # 실제 이메일 발송
+    from app.core.email import send_email
+    from app.core.email_templates import password_reset_email
+
+    await send_email(
         user.email,
-        token,
-        settings.password_reset_token_expire_minutes,
+        "[CampusON] 비밀번호 재설정",
+        password_reset_email(
+            user.name,
+            token,
+            settings.password_reset_token_expire_minutes,
+        ),
     )
 
     if settings.env == "development":
@@ -279,3 +311,122 @@ async def confirm_password_reset(
     await db.flush()
     await redis.delete(key)
     logger.info("Password reset confirmed for user %s", user.email)
+
+    # 비밀번호 변경 알림 메일
+    from app.core.email import send_email
+    from app.core.email_templates import password_changed_email
+
+    await send_email(
+        user.email,
+        "[CampusON] 비밀번호가 변경되었습니다",
+        password_changed_email(user.name),
+    )
+
+
+# === 이메일 인증 ===
+
+class EmailVerificationError(AuthError):
+    pass
+
+
+async def send_verification_code(
+    db: AsyncSession,
+    redis: Redis,
+    user: User,
+) -> str:
+    """6자리 인증코드를 생성하고 Redis에 저장 + 이메일 발송.
+
+    Returns
+    -------
+    str
+        생성된 코드 (개발 환경에서만 응답에 포함).
+    """
+    code = _generate_6digit_code()
+    key = f"{EMAIL_VERIFY_KEY_PREFIX}{user.id}"
+    ttl = settings.email_verification_code_expire_minutes * 60
+    await redis.setex(key, ttl, code)
+
+    from app.core.email import send_email
+    from app.core.email_templates import verification_code_email
+
+    await send_email(
+        user.email,
+        "[CampusON] 이메일 인증코드",
+        verification_code_email(
+            user.name,
+            code,
+            settings.email_verification_code_expire_minutes,
+        ),
+    )
+
+    logger.info("Verification code sent to %s (expires in %d min)", user.email, settings.email_verification_code_expire_minutes)
+    return code
+
+
+async def verify_email(
+    db: AsyncSession,
+    redis: Redis,
+    email: str,
+    code: str,
+) -> User:
+    """인증코드 검증 → email_verified=True, status=ACTIVE → 환영 메일.
+
+    Returns
+    -------
+    User
+        인증 완료된 사용자.
+    """
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    if user is None:
+        raise EmailVerificationError("사용자를 찾을 수 없습니다.")
+    if user.email_verified:
+        raise EmailVerificationError("이미 이메일 인증이 완료되었습니다.")
+
+    key = f"{EMAIL_VERIFY_KEY_PREFIX}{user.id}"
+    stored_code = await redis.get(key)
+    if stored_code is None:
+        raise EmailVerificationError("인증코드가 만료되었습니다. 재발송을 요청해주세요.")
+    if stored_code != code:
+        raise EmailVerificationError("인증코드가 올바르지 않습니다.")
+
+    # 인증 성공
+    user.email_verified = True
+    user.email_verified_at = datetime.now(UTC)
+    user.status = UserStatus.ACTIVE
+    await db.flush()
+    await redis.delete(key)
+
+    # 환영 메일
+    from app.core.email import send_email
+    from app.core.email_templates import welcome_email
+
+    await send_email(
+        user.email,
+        "[CampusON] 환영합니다!",
+        welcome_email(user.name, user.department.value),
+    )
+
+    logger.info("Email verified for user %s", user.email)
+    return user
+
+
+async def resend_verification_code(
+    db: AsyncSession,
+    redis: Redis,
+    email: str,
+) -> str | None:
+    """인증코드 재발송.
+
+    Returns
+    -------
+    str | None
+        개발 환경에서만 코드 반환.
+    """
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    if user is None or user.email_verified:
+        return None  # 사용자 존재 노출 방지
+
+    code = await send_verification_code(db, redis, user)
+    if settings.env == "development":
+        return code
+    return None
