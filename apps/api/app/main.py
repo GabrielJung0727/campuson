@@ -11,9 +11,11 @@ from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.diagnostic import router as diagnostic_router
 from app.api.health import router as health_router
+from app.api.kb import router as kb_router
 from app.api.learning_history import router as learning_history_router
 from app.api.password_reset import router as password_reset_router
 from app.api.questions import router as questions_router
+from app.api.recommendation import router as recommendation_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.redis import close_redis, get_redis_client
@@ -85,6 +87,14 @@ TAGS_METADATA = [
         "name": "ai",
         "description": "LLM 기반 문제 해설/QA + 호출 감사 로그 (Day 6)",
     },
+    {
+        "name": "kb",
+        "description": "지식베이스 적재/검수/하이브리드 검색 (Day 8~9 RAG)",
+    },
+    {
+        "name": "recommendation",
+        "description": "학습 추천 문제 세트 (Day 11 추천 엔진)",
+    },
 ]
 
 
@@ -125,6 +135,8 @@ app.include_router(questions_router, prefix=settings.api_prefix)
 app.include_router(diagnostic_router, prefix=settings.api_prefix)
 app.include_router(learning_history_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
+app.include_router(kb_router, prefix=settings.api_prefix)
+app.include_router(recommendation_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

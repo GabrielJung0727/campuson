@@ -27,6 +27,16 @@ from app.schemas.diagnostic import (
     DiagnosticSubmitRequest,
     WeakAreaItem,
 )
+from app.schemas.kb import (
+    KBDocumentListResponse,
+    KBDocumentResponse,
+    KBIngestRequest,
+    KBIngestResponse,
+    KBReviewRequest,
+    KBSearchHit,
+    KBSearchRequest,
+    KBSearchResponse,
+)
 from app.schemas.learning_history import (
     AnswerSubmitRequest,
     AnswerSubmitResponse,
@@ -65,6 +75,14 @@ __all__ = [
     "DiagnosticSubmitRequest",
     "ErrorResponse",
     "ExplainRequest",
+    "KBDocumentListResponse",
+    "KBDocumentResponse",
+    "KBIngestRequest",
+    "KBIngestResponse",
+    "KBReviewRequest",
+    "KBSearchHit",
+    "KBSearchRequest",
+    "KBSearchResponse",
     "LearningHistoryItem",
     "LearningHistoryListResponse",
     "LearningStatsResponse",
