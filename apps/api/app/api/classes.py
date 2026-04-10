@@ -97,21 +97,39 @@ async def create_class(
     )
 
 
-@router.get("", summary="내 클래스 목록")
+@router.get("", summary="내 클래스 목록 (학과장은 학과 전체)")
 async def list_my_classes(
     current_user: User = Depends(require_roles(Role.PROFESSOR, Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> list[ClassResponse]:
+    from app.models.enums import ProfessorRole
+
+    # 학과장(DEPT_HEAD)은 같은 학과의 모든 교수 클래스를 볼 수 있음
+    is_dept_head = (
+        current_user.role == Role.PROFESSOR
+        and current_user.professor_role == ProfessorRole.DEPT_HEAD
+    )
+    is_admin = current_user.role in (Role.ADMIN, Role.DEVELOPER)
+
     stmt = (
         select(
             ProfessorClass,
             func.count(ClassStudent.id).label("cnt"),
         )
         .outerjoin(ClassStudent, ClassStudent.class_id == ProfessorClass.id)
-        .where(ProfessorClass.professor_id == current_user.id)
-        .group_by(ProfessorClass.id)
-        .order_by(ProfessorClass.created_at.desc())
     )
+
+    if is_dept_head:
+        # 학과장: 같은 학과 모든 클래스
+        stmt = stmt.where(ProfessorClass.department == current_user.department)
+    elif is_admin:
+        # 관리자/개발자: 전체
+        pass
+    else:
+        # 일반 교수: 본인 클래스만
+        stmt = stmt.where(ProfessorClass.professor_id == current_user.id)
+
+    stmt = stmt.group_by(ProfessorClass.id).order_by(ProfessorClass.created_at.desc())
     rows = (await db.execute(stmt)).all()
     return [
         ClassResponse(
@@ -129,9 +147,21 @@ async def get_class_detail(
     current_user: User = Depends(require_roles(Role.PROFESSOR, Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> ClassDetailResponse:
+    from app.models.enums import ProfessorRole
+
     cls = await db.get(ProfessorClass, class_id, options=[selectinload(ProfessorClass.students)])
-    if cls is None or cls.professor_id != current_user.id:
+    if cls is None:
         raise HTTPException(status_code=404, detail="Class not found")
+
+    # 접근 권한: 본인 클래스 OR 학과장(같은 학과) OR 관리자
+    is_owner = cls.professor_id == current_user.id
+    is_dept_head = (
+        current_user.professor_role == ProfessorRole.DEPT_HEAD
+        and cls.department == current_user.department
+    )
+    is_admin = current_user.role in (Role.ADMIN, Role.DEVELOPER)
+    if not (is_owner or is_dept_head or is_admin):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     student_ids = [cs.student_id for cs in cls.students]
     students = []

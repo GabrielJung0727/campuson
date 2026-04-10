@@ -64,8 +64,16 @@ export default function ProfessorClassesPage() {
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">내 클래스</h1>
-          <p className="text-sm text-slate-500">{user.name} 교수님의 반 관리</p>
+          <h1 className="text-2xl font-bold">
+            내 클래스
+            {(user as Record<string, unknown>).professor_role === 'DEPT_HEAD' && (
+              <span className="ml-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">학과장</span>
+            )}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {user.name} 교수님의 반 관리
+            {(user as Record<string, unknown>).professor_role === 'DEPT_HEAD' && ' (학과 전체 클래스 조회 가능)'}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
