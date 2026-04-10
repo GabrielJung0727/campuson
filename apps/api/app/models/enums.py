@@ -109,7 +109,54 @@ class EmbeddingProvider(str, enum.Enum):
 class KBReviewStatus(str, enum.Enum):
     """지식베이스 문서 검수 상태 (Day 8)."""
 
-    DRAFT = "DRAFT"  # 초안, 적재 직후
-    REVIEWED = "REVIEWED"  # 교수 검수 완료
-    PUBLISHED = "PUBLISHED"  # 학생 노출 가능
-    ARCHIVED = "ARCHIVED"  # 보관 (검색 제외)
+    DRAFT = "DRAFT"
+    REVIEWED = "REVIEWED"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
+# === v0.3 역할 세분화 ===
+
+class ProfessorRole(str, enum.Enum):
+    """교수 세부 역할."""
+
+    FULL_TIME = "FULL_TIME"  # 전임교수
+    ADJUNCT = "ADJUNCT"  # 겸임교수
+    DEPT_HEAD = "DEPT_HEAD"  # 학과장
+
+
+class AdminRole(str, enum.Enum):
+    """관리자 세부 역할 — 경복대 행정조직 반영."""
+
+    ACADEMIC_AFFAIRS = "ACADEMIC_AFFAIRS"  # 교무처
+    STUDENT_AFFAIRS = "STUDENT_AFFAIRS"  # 학생처
+    GENERAL_ADMIN = "GENERAL_ADMIN"  # 사무국
+    PLANNING = "PLANNING"  # 기획처
+    IT_CENTER = "IT_CENTER"  # 디지털정보처
+    ADMISSIONS = "ADMISSIONS"  # 입학홍보처
+    SUPER_ADMIN = "SUPER_ADMIN"  # 총괄 관리자
+
+
+class StudentNationality(str, enum.Enum):
+    """학생 국적."""
+
+    KOREAN = "KOREAN"
+    INTERNATIONAL = "INTERNATIONAL"
+
+
+class AnnouncementTarget(str, enum.Enum):
+    """공지 대상."""
+
+    ALL = "ALL"
+    STUDENT = "STUDENT"
+    PROFESSOR = "PROFESSOR"
+    ADMIN = "ADMIN"
+    DEVELOPER = "DEVELOPER"
+
+
+class AnnouncementType(str, enum.Enum):
+    """공지 유형."""
+
+    GENERAL = "GENERAL"
+    MAINTENANCE = "MAINTENANCE"
+    URGENT = "URGENT"

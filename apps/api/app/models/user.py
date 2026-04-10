@@ -7,7 +7,14 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import Department, Role, UserStatus
+from app.models.enums import (
+    AdminRole,
+    Department,
+    ProfessorRole,
+    Role,
+    StudentNationality,
+    UserStatus,
+)
 
 
 class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -60,6 +67,28 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         SAEnum(UserStatus, name="user_status_enum", native_enum=True),
         nullable=False,
         default=UserStatus.PENDING,
+    )
+
+    # --- v0.3 역할 세분화 ---
+    professor_role: Mapped[ProfessorRole | None] = mapped_column(
+        SAEnum(ProfessorRole, name="professor_role_enum", native_enum=True, create_type=True),
+        nullable=True,
+        comment="교수 세부 역할 (전임/겸임/학과장)",
+    )
+    admin_role: Mapped[AdminRole | None] = mapped_column(
+        SAEnum(AdminRole, name="admin_role_enum", native_enum=True, create_type=True),
+        nullable=True,
+        comment="관리자 세부 역할 (교무처/학생처/사무국 등)",
+    )
+    nationality: Mapped[StudentNationality | None] = mapped_column(
+        SAEnum(StudentNationality, name="nationality_enum", native_enum=True, create_type=True),
+        nullable=True,
+        comment="학생 국적 (한국인/외국인)",
+    )
+    grade: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="학년 (1~4)",
     )
 
     # --- 감사 ---

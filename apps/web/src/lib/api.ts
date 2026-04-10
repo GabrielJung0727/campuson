@@ -172,4 +172,18 @@ export const api = {
   // AI Generate (v0.2)
   generateQuestions: (body: Record<string, unknown>) =>
     apiFetch('/ai/generate-questions', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Announcements (v0.3)
+  getAnnouncements: () => apiFetch('/announcements'),
+  createAnnouncement: (body: Record<string, unknown>) =>
+    apiFetch('/announcements', { method: 'POST', body: JSON.stringify(body) }),
+  deleteAnnouncement: (id: string) =>
+    apiFetch(`/announcements/${id}`, { method: 'DELETE' }),
+
+  // Dev Center (v0.3)
+  devHealthCheck: () => apiFetch('/dev/health-check'),
+  devStats: () => apiFetch('/dev/stats'),
+  devSettings: () => apiFetch('/dev/settings'),
+  updateUserRole: (userId: string, body: Record<string, unknown>) =>
+    apiFetch(`/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify(body) }),
 };

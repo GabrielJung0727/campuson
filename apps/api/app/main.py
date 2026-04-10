@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.ai import router as ai_router
+from app.api.announcements import router as announcements_router
 from app.api.assignments import router as assignments_router
 from app.api.auth import router as auth_router
 from app.api.classes import router as classes_router
@@ -143,6 +144,7 @@ app.include_router(recommendation_router, prefix=settings.api_prefix)
 app.include_router(stats_router, prefix=settings.api_prefix)
 app.include_router(classes_router, prefix=settings.api_prefix)
 app.include_router(assignments_router, prefix=settings.api_prefix)
+app.include_router(announcements_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
