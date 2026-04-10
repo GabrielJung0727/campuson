@@ -1,0 +1,54 @@
+# Render.com Blueprint — CampusON API
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: campuson-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: campuson-db
+          property: connectionString
+        # Render의 PostgreSQL URL은 postgresql:// 형식이므로
+        # asyncpg 사용 시 코드에서 postgresql+asyncpg:// 로 변환 필요
+      - key: DATABASE_URL_SYNC
+        fromDatabase:
+          name: campuson-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: campuson-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: LLM_PROVIDER
+        value: mock
+      - key: EMBEDDING_PROVIDER
+        value: mock
+      - key: AUDIT_LOG_ENABLED
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false  # 수동 입력 — Vercel 도메인
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    branch: main
+    rootDir: apps/api
+    plan: starter
+
+databases:
+  - name: campuson-db
+    plan: starter
+    postgresMajorVersion: "16"
+    ipAllowList: []  # Render 내부만
+
+  - name: campuson-redis
+    plan: starter
+    type: redis
