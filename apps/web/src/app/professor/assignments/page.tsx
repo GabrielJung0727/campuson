@@ -45,7 +45,8 @@ export default function AssignmentsPage() {
           <button onClick={() => router.push('/professor/generate')} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700">
             🤖 AI 문제 생성
           </button>
-          <button onClick={() => router.push('/dashboard')} className="text-sm text-slate-500">← 대시보드</button>
+          <button onClick={() => router.push('/account')} className="text-sm text-slate-500">설정</button>
+          <button onClick={() => router.push('/dashboard')} className="text-sm text-slate-500">&larr; 대시보드</button>
         </div>
       </div>
 

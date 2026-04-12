@@ -85,8 +85,9 @@ export default function ProfessorClassesPage() {
           <button onClick={() => router.push('/professor/analytics')} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
             📊 분석
           </button>
+          <button onClick={() => router.push('/account')} className="text-sm text-slate-500">설정</button>
           <button onClick={() => router.push('/dashboard')} className="text-sm text-slate-500">
-            ← 대시보드
+            &larr; 대시보드
           </button>
         </div>
       </div>

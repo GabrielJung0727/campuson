@@ -15,13 +15,17 @@ from app.models.enums import (
     Difficulty,
     EmbeddingProvider,
     ErrorType,
+    EvalGrade,
+    EvalStatus,
     KBReviewStatus,
     LLMProvider,
     Level,
+    PracticumCategory,
     QuestionType,
     Role,
     UserStatus,
 )
+from app.models.practicum import PracticumScenario, PracticumSession
 from app.models.kb_document import KBChunk, KBDocument
 from app.models.learning_history import LearningHistory
 from app.models.professor_class import ClassStudent, ProfessorClass

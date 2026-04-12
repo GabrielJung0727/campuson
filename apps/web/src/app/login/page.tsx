@@ -95,12 +95,14 @@ export default function LoginPage() {
             {loading ? '로그인 중...' : '로그인'}
           </button>
 
-          <p className="text-center text-sm text-slate-500">
-            계정이 없으신가요?{' '}
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <Link href="/find-account" className="hover:text-brand-600 hover:underline">
+              아이디/비밀번호 찾기
+            </Link>
             <Link href="/register" className="font-semibold text-brand-600 hover:underline">
               회원가입
             </Link>
-          </p>
+          </div>
         </form>
       </div>
     </main>

@@ -180,6 +180,50 @@ export const api = {
   deleteAnnouncement: (id: string) =>
     apiFetch(`/announcements/${id}`, { method: 'DELETE' }),
 
+  // Account
+  changePassword: (body: { current_password: string; new_password: string }) =>
+    apiFetch('/users/me/password', { method: 'POST', body: JSON.stringify(body) }),
+  findEmail: (body: { name: string; student_no: string }) =>
+    apiFetch('/auth/find-email', { method: 'POST', body: JSON.stringify(body) }),
+  requestPasswordReset: (email: string) =>
+    apiFetch('/auth/request-password-reset', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (body: { token: string; new_password: string }) =>
+    apiFetch('/auth/confirm-password-reset', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Practicum (v0.4)
+  getPracticumScenarios: (dept?: string) =>
+    apiFetch(`/practicum/scenarios${dept ? `?department=${dept}` : ''}`),
+  createPracticumScenario: (body: Record<string, unknown>) =>
+    apiFetch('/practicum/scenarios', { method: 'POST', body: JSON.stringify(body) }),
+  getPracticumScenario: (id: string) => apiFetch(`/practicum/scenarios/${id}`),
+  deletePracticumScenario: (id: string) =>
+    apiFetch(`/practicum/scenarios/${id}`, { method: 'DELETE' }),
+  createPracticumSession: (scenarioId: string) =>
+    apiFetch(`/practicum/sessions?scenario_id=${scenarioId}`, { method: 'POST' }),
+  getPracticumSessions: (params?: string) =>
+    apiFetch(`/practicum/sessions${params ? `?${params}` : ''}`),
+  getPracticumSession: (id: string) => apiFetch(`/practicum/sessions/${id}`),
+  submitPracticumSession: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/practicum/sessions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  generatePracticumFeedback: (id: string) =>
+    apiFetch(`/practicum/sessions/${id}/feedback`, { method: 'POST' }),
+  reviewPracticumSession: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/practicum/sessions/${id}/review`, { method: 'PATCH', body: JSON.stringify(body) }),
+  getPracticumStudentStats: (studentId: string) =>
+    apiFetch(`/practicum/stats/student/${studentId}`),
+  // Live session
+  createLiveSession: (scenarioId: string) =>
+    apiFetch(`/practicum/sessions/live?scenario_id=${scenarioId}`, { method: 'POST' }),
+  joinLiveSession: (code: string) =>
+    apiFetch(`/practicum/sessions/join?join_code=${code}`, { method: 'POST' }),
+  liveCheckSession: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/practicum/sessions/${id}/live-check`, { method: 'PATCH', body: JSON.stringify(body) }),
+  // Video session
+  createVideoSession: (scenarioId: string) =>
+    apiFetch(`/practicum/sessions/video?scenario_id=${scenarioId}`, { method: 'POST' }),
+  aiEvaluateSession: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/practicum/sessions/${id}/ai-evaluate`, { method: 'POST', body: JSON.stringify(body) }),
+
   // Dev Center (v0.3)
   devHealthCheck: () => apiFetch('/dev/health-check'),
   devStats: () => apiFetch('/dev/stats'),

@@ -87,7 +87,7 @@ export default function ClassDetailPage() {
 
   // stats에서 학생별 정답률 매핑
   const accMap: Record<string, number> = {};
-  stats?.student_stats.forEach((s) => { accMap[s.user_id] = s.accuracy; });
+  stats?.student_stats?.forEach((s: { user_id: string; accuracy: number }) => { accMap[s.user_id] = s.accuracy; });
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">

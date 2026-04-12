@@ -94,3 +94,10 @@ class RegisterResponse(BaseModel):
     user_id: str
     email: str
     requires_verification: bool = True
+
+
+class FindEmailRequest(BaseModel):
+    """아이디(이메일) 찾기 — 이름 + 학번으로 조회."""
+
+    name: str = Field(..., min_length=1, max_length=50)
+    student_no: str = Field(..., min_length=7, max_length=10)

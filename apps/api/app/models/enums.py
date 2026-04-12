@@ -160,3 +160,79 @@ class AnnouncementType(str, enum.Enum):
     GENERAL = "GENERAL"
     MAINTENANCE = "MAINTENANCE"
     URGENT = "URGENT"
+
+
+# ── 실습 평가 (v0.4) ──
+
+
+class PracticumCategory(str, enum.Enum):
+    """실습 평가 유형."""
+
+    # 간호학과
+    HAND_HYGIENE = "HAND_HYGIENE"
+    VITAL_SIGNS = "VITAL_SIGNS"
+    INJECTION = "INJECTION"
+    ASEPTIC_TECHNIQUE = "ASEPTIC_TECHNIQUE"
+    BLS = "BLS"
+    # 물리치료학과
+    ROM_MEASUREMENT = "ROM_MEASUREMENT"
+    GAIT_TRAINING = "GAIT_TRAINING"
+    ELECTROTHERAPY = "ELECTROTHERAPY"
+    PATIENT_TRANSFER = "PATIENT_TRANSFER"
+    # 치위생학과
+    SCALING = "SCALING"
+    ORAL_EXAM = "ORAL_EXAM"
+    INFECTION_CONTROL = "INFECTION_CONTROL"
+    TOOTH_POLISHING = "TOOTH_POLISHING"
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            PracticumCategory.HAND_HYGIENE: "손위생",
+            PracticumCategory.VITAL_SIGNS: "활력징후 측정",
+            PracticumCategory.INJECTION: "주사 술기",
+            PracticumCategory.ASEPTIC_TECHNIQUE: "무균술",
+            PracticumCategory.BLS: "기본 심폐소생술",
+            PracticumCategory.ROM_MEASUREMENT: "ROM 측정",
+            PracticumCategory.GAIT_TRAINING: "보행 훈련 지도",
+            PracticumCategory.ELECTROTHERAPY: "전기치료 장비 세팅",
+            PracticumCategory.PATIENT_TRANSFER: "환자 이동 보조",
+            PracticumCategory.SCALING: "스케일링",
+            PracticumCategory.ORAL_EXAM: "구강검진",
+            PracticumCategory.INFECTION_CONTROL: "감염관리 절차",
+            PracticumCategory.TOOTH_POLISHING: "치면세마",
+        }[self]
+
+
+class EvalGrade(str, enum.Enum):
+    """실습 평가 등급."""
+
+    EXCELLENT = "EXCELLENT"
+    GOOD = "GOOD"
+    NEEDS_IMPROVEMENT = "NEEDS_IMPROVEMENT"
+    FAIL = "FAIL"
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            EvalGrade.EXCELLENT: "우수",
+            EvalGrade.GOOD: "양호",
+            EvalGrade.NEEDS_IMPROVEMENT: "보완 필요",
+            EvalGrade.FAIL: "불합격",
+        }[self]
+
+
+class EvalStatus(str, enum.Enum):
+    """실습 세션 상태."""
+
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    REVIEWED = "REVIEWED"
+
+
+class PracticumMode(str, enum.Enum):
+    """실습 세션 모드."""
+
+    SELF = "SELF"          # 학생 자체 체크
+    VIDEO = "VIDEO"        # 영상 업로드 + AI 평가
+    LIVE = "LIVE"          # 교수 실시간 세션

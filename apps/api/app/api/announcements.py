@@ -98,17 +98,16 @@ async def list_announcements(
     filters.append(
         (Announcement.ends_at.is_(None)) | (Announcement.ends_at > now)
     )
-    # 대상 필터: ALL이거나 내 역할에 맞는 것
-    role_map = {
-        Role.STUDENT: AnnouncementTarget.STUDENT,
-        Role.PROFESSOR: AnnouncementTarget.PROFESSOR,
-        Role.ADMIN: AnnouncementTarget.ADMIN,
-        Role.DEVELOPER: AnnouncementTarget.DEVELOPER,
-    }
-    my_target = role_map.get(current_user.role, AnnouncementTarget.ALL)
+    # 대상 필터: ADMIN/DEVELOPER는 전체 공지 열람 가능
+    is_manager = current_user.role in (Role.ADMIN, Role.DEVELOPER)
     if target:
         filters.append(Announcement.target_audience == target)
-    else:
+    elif not is_manager:
+        role_map = {
+            Role.STUDENT: AnnouncementTarget.STUDENT,
+            Role.PROFESSOR: AnnouncementTarget.PROFESSOR,
+        }
+        my_target = role_map.get(current_user.role, AnnouncementTarget.ALL)
         filters.append(
             Announcement.target_audience.in_([AnnouncementTarget.ALL, my_target])
         )
@@ -156,7 +155,14 @@ async def create_announcement(
     if payload.send_email:
         try:
             from app.core.email import send_email as send_mail
-            from app.core.email_templates import DEPT_LABEL
+            from app.core.email_templates import announcement_email
+
+            html_body = announcement_email(
+                title=payload.title,
+                content=payload.content,
+                announcement_type=payload.announcement_type.value,
+                target_audience=payload.target_audience.value,
+            )
 
             # 대상 사용자 조회
             target_filter = []
@@ -174,12 +180,16 @@ async def create_announcement(
             users_stmt = select(User.email).where(User.status == "ACTIVE", *target_filter).limit(500)
             emails = [r[0] for r in (await db.execute(users_stmt)).all()]
 
-            for email in emails[:100]:  # 최대 100명
-                await send_mail(
-                    email,
-                    f"[CampusON] {payload.title}",
-                    f"<h2>{payload.title}</h2><p>{payload.content}</p>",
-                )
+            # 유형별 제목 프리픽스
+            _prefix = {
+                AnnouncementType.URGENT: "[긴급]",
+                AnnouncementType.MAINTENANCE: "[점검]",
+            }
+            subject_prefix = _prefix.get(payload.announcement_type, "")
+            subject = f"[CampusON] {subject_prefix} {payload.title}".replace("  ", " ")
+
+            for email in emails[:100]:
+                await send_mail(email, subject, html_body)
         except Exception:
             import logging
             logging.getLogger(__name__).exception("Announcement email failed (non-blocking)")

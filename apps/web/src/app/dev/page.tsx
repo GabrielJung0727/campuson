@@ -32,6 +32,19 @@ interface UserItem {
   grade: number | null;
 }
 
+interface AnnItem {
+  id: string;
+  title: string;
+  content: string;
+  target_audience: string;
+  announcement_type: string;
+  is_active: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  send_email: boolean;
+  created_at: string;
+}
+
 const ROLE_OPTIONS = ['STUDENT', 'PROFESSOR', 'ADMIN', 'DEVELOPER'];
 const PROF_ROLES = ['FULL_TIME', 'ADJUNCT', 'DEPT_HEAD'];
 const ADMIN_ROLES = ['ACADEMIC_AFFAIRS', 'STUDENT_AFFAIRS', 'GENERAL_ADMIN', 'PLANNING', 'IT_CENTER', 'ADMISSIONS', 'SUPER_ADMIN'];
@@ -58,7 +71,7 @@ const STATUS_BADGE: Record<string, string> = {
 export default function DevDashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<'overview' | 'users' | 'settings' | 'llm'>('overview');
+  const [tab, setTab] = useState<'overview' | 'users' | 'announce' | 'settings' | 'llm'>('overview');
   const [health, setHealth] = useState<HealthCheck | null>(null);
   const [stats, setStats] = useState<DevStats | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
@@ -67,6 +80,11 @@ export default function DevDashboardPage() {
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [now, setNow] = useState(new Date());
+
+  // Announcements
+  const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
+  const [annForm, setAnnForm] = useState({ title: '', content: '', target_audience: 'ALL', announcement_type: 'GENERAL', send_email: false });
+  const [annCreating, setAnnCreating] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'DEVELOPER')) router.push('/dashboard');
@@ -78,6 +96,7 @@ export default function DevDashboardPage() {
       api.devStats().then((d: unknown) => setStats(d as DevStats)).catch(() => {});
       api.devSettings().then((d: unknown) => setSettings(d as Record<string, unknown>)).catch(() => {});
       apiFetch<UserItem[]>('/users').then(setUsers).catch(() => {});
+      api.getAnnouncements().then((d: unknown) => setAnnouncements(d as AnnItem[])).catch(() => {});
     }
   }, [user]);
 
@@ -127,6 +146,31 @@ export default function DevDashboardPage() {
     }
   }
 
+  async function handleCreateAnnouncement() {
+    if (!annForm.title.trim() || !annForm.content.trim()) return;
+    setAnnCreating(true);
+    try {
+      await api.createAnnouncement(annForm);
+      const updated = await api.getAnnouncements();
+      setAnnouncements(updated as AnnItem[]);
+      setAnnForm({ title: '', content: '', target_audience: 'ALL', announcement_type: 'GENERAL', send_email: false });
+    } catch (err) {
+      alert(`공지 등록 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setAnnCreating(false);
+    }
+  }
+
+  async function handleDeleteAnnouncement(id: string) {
+    if (!confirm('이 공지를 삭제하시겠습니까?')) return;
+    try {
+      await api.deleteAnnouncement(id);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      alert(`삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
@@ -138,6 +182,7 @@ export default function DevDashboardPage() {
   const tabs = [
     { key: 'overview' as const, label: 'SYSTEM', icon: '>' },
     { key: 'users' as const, label: `USERS [${users.length}]`, icon: '>' },
+    { key: 'announce' as const, label: `ANNOUNCE [${announcements.length}]`, icon: '>' },
     { key: 'settings' as const, label: 'CONFIG', icon: '>' },
     { key: 'llm' as const, label: 'AI/RAG', icon: '>' },
   ];
@@ -165,11 +210,17 @@ export default function DevDashboardPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-mono">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               {user.name}
             </div>
+            <button
+              onClick={() => router.push('/account')}
+              className="rounded-md border border-slate-700 bg-slate-800/50 px-3 py-1.5 font-mono text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"
+            >
+              ACCOUNT
+            </button>
             <button
               onClick={() => router.push('/dashboard')}
               className="rounded-md border border-slate-700 bg-slate-800/50 px-3 py-1.5 font-mono text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"
@@ -472,6 +523,149 @@ export default function DevDashboardPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* ===== ANNOUNCEMENTS TAB ===== */}
+        {tab === 'announce' && (
+          <div className="space-y-6">
+            {/* Create Form */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 className="mb-4 font-mono text-xs font-bold tracking-widest text-slate-400">NEW ANNOUNCEMENT</h2>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={annForm.title}
+                  onChange={(e) => setAnnForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="제목"
+                  maxLength={200}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
+                />
+                <textarea
+                  value={annForm.content}
+                  onChange={(e) => setAnnForm((f) => ({ ...f, content: e.target.value }))}
+                  placeholder="내용을 입력하세요..."
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30 resize-none"
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Type */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-slate-500 tracking-wider">TYPE</span>
+                    <div className="flex gap-1">
+                      {(['GENERAL', 'URGENT', 'MAINTENANCE'] as const).map((t) => {
+                        const colors: Record<string, string> = {
+                          GENERAL: annForm.announcement_type === t ? 'bg-blue-500/30 text-blue-300 border-blue-500/50' : 'bg-slate-800 text-slate-500 border-slate-700',
+                          URGENT: annForm.announcement_type === t ? 'bg-red-500/30 text-red-300 border-red-500/50' : 'bg-slate-800 text-slate-500 border-slate-700',
+                          MAINTENANCE: annForm.announcement_type === t ? 'bg-amber-500/30 text-amber-300 border-amber-500/50' : 'bg-slate-800 text-slate-500 border-slate-700',
+                        };
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setAnnForm((f) => ({ ...f, announcement_type: t }))}
+                            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] transition ${colors[t]}`}
+                          >
+                            {t === 'GENERAL' ? 'GENERAL' : t === 'URGENT' ? 'URGENT' : 'MAINT'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* Target */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-slate-500 tracking-wider">TARGET</span>
+                    <select
+                      value={annForm.target_audience}
+                      onChange={(e) => setAnnForm((f) => ({ ...f, target_audience: e.target.value }))}
+                      className="rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1 font-mono text-[11px] text-slate-300 focus:outline-none focus:border-rose-500/50"
+                    >
+                      {['ALL', 'STUDENT', 'PROFESSOR', 'ADMIN', 'DEVELOPER'].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Email */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={annForm.send_email}
+                      onChange={(e) => setAnnForm((f) => ({ ...f, send_email: e.target.checked }))}
+                      className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-rose-500 focus:ring-rose-500/30"
+                    />
+                    <span className="font-mono text-[11px] text-slate-400">EMAIL</span>
+                  </label>
+                  {/* Submit */}
+                  <button
+                    onClick={handleCreateAnnouncement}
+                    disabled={annCreating || !annForm.title.trim() || !annForm.content.trim()}
+                    className="ml-auto rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-2 font-mono text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {annCreating ? 'SENDING...' : 'PUBLISH'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Announcements List */}
+            {announcements.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-800 py-12 text-center">
+                <div className="font-mono text-sm text-slate-600">NO ANNOUNCEMENTS</div>
+                <div className="mt-1 font-mono text-[10px] text-slate-700">Create one above to broadcast to users</div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {announcements.map((ann) => {
+                  const typeBadge: Record<string, string> = {
+                    GENERAL: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+                    URGENT: 'bg-red-500/20 text-red-300 border-red-500/30',
+                    MAINTENANCE: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                  };
+                  const targetBadge: Record<string, string> = {
+                    ALL: 'text-slate-400',
+                    STUDENT: 'text-blue-400',
+                    PROFESSOR: 'text-purple-400',
+                    ADMIN: 'text-amber-400',
+                    DEVELOPER: 'text-rose-400',
+                  };
+                  return (
+                    <div key={ann.id} className="group rounded-xl border border-slate-800 bg-slate-900/40 p-4 hover:border-slate-700 transition">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className={`inline-block rounded border px-2 py-0.5 font-mono text-[10px] ${typeBadge[ann.announcement_type] || 'text-slate-400'}`}>
+                              {ann.announcement_type}
+                            </span>
+                            <span className={`font-mono text-[10px] ${targetBadge[ann.target_audience] || 'text-slate-400'}`}>
+                              @{ann.target_audience}
+                            </span>
+                            {ann.send_email && (
+                              <span className="font-mono text-[10px] text-cyan-400/60">+EMAIL</span>
+                            )}
+                            {!ann.is_active && (
+                              <span className="rounded bg-slate-700/50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">INACTIVE</span>
+                            )}
+                          </div>
+                          <h3 className="text-sm font-semibold text-slate-200">{ann.title}</h3>
+                          <p className="mt-1 text-xs text-slate-400 line-clamp-2">{ann.content}</p>
+                          <div className="mt-2 flex items-center gap-3 font-mono text-[10px] text-slate-600">
+                            <span>{new Date(ann.created_at).toLocaleString('ko-KR')}</span>
+                            {ann.ends_at && (
+                              <span>~ {new Date(ann.ends_at).toLocaleDateString('ko-KR')}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                          className="shrink-0 rounded-md border border-transparent px-2 py-1 font-mono text-[11px] text-slate-600 opacity-0 group-hover:opacity-100 hover:border-red-500/30 hover:text-red-400 transition"
+                        >
+                          DELETE
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
