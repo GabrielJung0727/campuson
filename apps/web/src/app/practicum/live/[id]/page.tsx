@@ -230,12 +230,43 @@ export default function PracticumLivePage() {
     }
   }
 
-  function handleStop() {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'stop', session_id: sessionId }));
-    }
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleStop() {
     cancelAnimationFrame(animFrameRef.current);
     setRecording(false);
+    setSaving(true);
+
+    // 1. WebSocket stop → 최종 피드백 받기
+    let finalFeedback: FeedbackData | null = null;
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop', session_id: sessionId }));
+      // 잠시 대기
+      await new Promise((r) => setTimeout(r, 500));
+      wsRef.current.close();
+    }
+
+    // 2. 체크리스트 결과 → DB 저장 (PATCH /practicum/sessions/{id})
+    try {
+      const items = session!.checklist_items;
+      const results = items.map((item) => {
+        const status = checklistStatus[item.id] || 'fail';
+        const pts = status === 'success' ? item.points : status === 'partial' ? Math.round(item.points * 0.5) : 0;
+        return { item_id: item.id, status, points_earned: pts };
+      });
+
+      await api.submitPracticumSession(sessionId, { checklist_results: results });
+
+      // 3. AI 피드백 생성 + 저장
+      await api.generatePracticumFeedback(sessionId);
+
+      setSaved(true);
+    } catch (err) {
+      alert(`저장 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading || !user || !session) return <div className="p-8 text-center">로딩 중...</div>;
@@ -310,7 +341,30 @@ export default function PracticumLivePage() {
 
             {/* Controls */}
             <div className="mt-4 flex gap-3">
-              {!recording ? (
+              {saved ? (
+                <div className="flex-1 space-y-3">
+                  <div className="rounded-xl bg-emerald-500/20 border border-emerald-500/30 p-4 text-center">
+                    <div className="text-lg font-bold text-emerald-400">분석 결과가 저장되었습니다</div>
+                    <div className="mt-1 text-xs text-emerald-300/70">
+                      체크리스트 {Object.values(checklistStatus).filter((s) => s === 'success').length}/{session.checklist_items.length} 항목 완료
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => router.push(`/practicum/session/${sessionId}`)}
+                      className="flex-1 rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-700 transition"
+                    >
+                      상세 결과 보기
+                    </button>
+                    <button
+                      onClick={() => router.push('/practicum')}
+                      className="flex-1 rounded-xl border border-slate-700 py-3 font-semibold text-slate-300 hover:bg-slate-800 transition"
+                    >
+                      목록으로
+                    </button>
+                  </div>
+                </div>
+              ) : !recording ? (
                 <button
                   onClick={() => { connectWS(); setTimeout(startAnalysis, 1000); }}
                   disabled={!!cameraError}
@@ -321,9 +375,10 @@ export default function PracticumLivePage() {
               ) : (
                 <button
                   onClick={handleStop}
-                  className="flex-1 rounded-xl bg-red-600 py-3.5 font-bold text-white hover:bg-red-700 transition"
+                  disabled={saving}
+                  className="flex-1 rounded-xl bg-red-600 py-3.5 font-bold text-white hover:bg-red-700 disabled:opacity-50 transition"
                 >
-                  분석 종료 + 결과 저장
+                  {saving ? '저장 중...' : '분석 종료 + 결과 저장'}
                 </button>
               )}
             </div>
