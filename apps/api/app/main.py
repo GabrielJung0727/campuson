@@ -7,13 +7,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api.advanced_recommendation import router as advanced_rec_router
 from app.api.ai import router as ai_router
 from app.api.announcements import router as announcements_router
+from app.api.blueprint import router as blueprint_router
+from app.api.concept_tags import router as concept_tags_router
 from app.api.cost import router as cost_router
+from app.api.error_analysis import router as error_analysis_router
 from app.api.jobs import router as jobs_router
 from app.api.notifications import router as notifications_router
 from app.api.ops_dashboard import router as ops_dashboard_router
 from app.api.practicum import router as practicum_router
+from app.api.professor_reports import router as professor_reports_router
 from app.api.practicum_ws import router as practicum_ws_router
 from app.api.assignments import router as assignments_router
 from app.api.auth import router as auth_router
@@ -126,6 +131,22 @@ TAGS_METADATA = [
         "name": "cost",
         "description": "LLM 비용 추적 / 모델 라우팅 / quota (v0.6)",
     },
+    {
+        "name": "blueprint",
+        "description": "국가고시 블루프린트 — 과목 체계/비중/시험 집중 모드 (v0.7)",
+    },
+    {
+        "name": "concepts",
+        "description": "개념 태그 체계 — 3단계 트리/관계/취약도 (v0.7)",
+    },
+    {
+        "name": "analysis",
+        "description": "오답 분석 고도화 — 난이도 보정/변별도/진단 리포트 (v0.7)",
+    },
+    {
+        "name": "reports",
+        "description": "교수용 학습 분석 리포트 — 성취도/비교/취약학생 (v0.7)",
+    },
 ]
 
 
@@ -181,6 +202,12 @@ app.include_router(jobs_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
 app.include_router(ops_dashboard_router, prefix=settings.api_prefix)
 app.include_router(cost_router, prefix=settings.api_prefix)
+# v0.7: 교육 효과 라우터
+app.include_router(blueprint_router, prefix=settings.api_prefix)
+app.include_router(concept_tags_router, prefix=settings.api_prefix)
+app.include_router(advanced_rec_router, prefix=settings.api_prefix)
+app.include_router(error_analysis_router, prefix=settings.api_prefix)
+app.include_router(professor_reports_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

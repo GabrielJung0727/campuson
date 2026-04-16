@@ -30,6 +30,7 @@ from app.models.enums import (
     Role,
     UserStatus,
 )
+from app.models.exam_blueprint import ConceptNode, ConceptRelation, ExamBlueprint
 from app.models.notification import Notification
 from app.models.practicum import PracticumScenario, PracticumSession
 from app.models.kb_document import KBChunk, KBDocument
@@ -45,6 +46,8 @@ __all__ = [
     "AIRequestType",
     "AuditLog",
     "BackgroundJob",
+    "ConceptNode",
+    "ConceptRelation",
     "CostDaily",
     "Department",
     "DiagnosticAnswer",
@@ -52,6 +55,7 @@ __all__ = [
     "Difficulty",
     "EmbeddingProvider",
     "ErrorType",
+    "ExamBlueprint",
     "ExplanationPreference",
     "JobStatus",
     "JobType",

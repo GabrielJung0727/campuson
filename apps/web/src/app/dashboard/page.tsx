@@ -190,6 +190,24 @@ export default function DashboardPage() {
           <p className="mt-1 text-xs text-teal-600">AI 실습 체크리스트 평가</p>
         </Link>
 
+        <Link
+          href="/quiz/exam-focus"
+          className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-2xl">🎯</div>
+          <h3 className="mt-2 font-semibold text-indigo-800">시험 집중 모드</h3>
+          <p className="mt-1 text-xs text-indigo-600">국시 블루프린트 기반 연습</p>
+        </Link>
+
+        <Link
+          href="/report/concepts"
+          className="rounded-xl border border-violet-200 bg-violet-50 p-6 shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-2xl">🧠</div>
+          <h3 className="mt-2 font-semibold text-violet-800">개념 분석</h3>
+          <p className="mt-1 text-xs text-violet-600">태그별 취약도 · 진단 리포트</p>
+        </Link>
+
         {hasDiagnostic === false && (
           <Link
             href="/diagnostic"
@@ -222,6 +240,11 @@ export default function DashboardPage() {
               <div className="text-2xl">🩺</div>
               <h3 className="mt-2 font-semibold text-teal-800">실습 평가 관리</h3>
               <p className="mt-1 text-xs text-teal-600">시나리오 · 리뷰</p>
+            </Link>
+            <Link href="/professor/reports" className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">📋</div>
+              <h3 className="mt-2 font-semibold text-indigo-800">학습 분석 리포트</h3>
+              <p className="mt-1 text-xs text-indigo-600">성취도 · 비교 · 취약학생</p>
             </Link>
           </>
         )}

@@ -295,4 +295,43 @@ export const api = {
     apiFetch(`/cost/routing${requestType ? `?request_type=${requestType}` : ''}`),
   triggerCostAggregation: (date?: string) =>
     apiFetch(`/cost/aggregate${date ? `?target_date=${date}` : ''}`, { method: 'POST' }),
+
+  // Blueprint (v0.7)
+  getBlueprint: () => apiFetch('/blueprint'),
+  seedBlueprint: () => apiFetch('/blueprint/seed', { method: 'POST' }),
+  getBlueprintWeakness: () => apiFetch('/blueprint/weakness'),
+  getBlueprintFocusSet: (setSize = 30) =>
+    apiFetch(`/blueprint/focus-set?set_size=${setSize}`, { method: 'POST' }),
+  getCurriculumCoverage: () => apiFetch('/blueprint/coverage'),
+
+  // Concept Tags (v0.7)
+  getConceptTree: () => apiFetch('/concepts/tree'),
+  createConceptNode: (body: Record<string, unknown>) =>
+    apiFetch('/concepts/nodes', { method: 'POST', body: JSON.stringify(body) }),
+  createConceptRelation: (body: Record<string, unknown>) =>
+    apiFetch('/concepts/relations', { method: 'POST', body: JSON.stringify(body) }),
+  getRelatedConcepts: (conceptId: string) => apiFetch(`/concepts/${conceptId}/related`),
+  getConceptWeakness: () => apiFetch('/concepts/weakness'),
+  getConceptStats: () => apiFetch('/concepts/stats'),
+
+  // Advanced Recommendation (v0.7)
+  getAdaptiveSet: (body: Record<string, unknown>) =>
+    apiFetch('/recommendation/adaptive', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Error Analysis (v0.7)
+  getDifficultyCalibration: (minAttempts = 10) =>
+    apiFetch(`/analysis/difficulty-calibration?min_attempts=${minAttempts}`),
+  getDiscrimination: (minAttempts = 20) =>
+    apiFetch(`/analysis/discrimination?min_attempts=${minAttempts}`),
+  getErrorBlueprint: (studentId?: string) =>
+    apiFetch(`/analysis/error-blueprint${studentId ? `?student_id=${studentId}` : ''}`),
+  getDiagnosticReport: (studentId?: string) =>
+    apiFetch(`/analysis/diagnostic-report${studentId ? `?student_id=${studentId}` : ''}`),
+
+  // Professor Reports (v0.7)
+  getClassStudents: (classId: string) => apiFetch(`/reports/class/${classId}/students`),
+  getClassObjectives: (classId: string) => apiFetch(`/reports/class/${classId}/objectives`),
+  compareClasses: () => apiFetch('/reports/compare'),
+  getAtRiskStudents: (classId: string, params?: string) =>
+    apiFetch(`/reports/class/${classId}/at-risk${params ? `?${params}` : ''}`),
 };
