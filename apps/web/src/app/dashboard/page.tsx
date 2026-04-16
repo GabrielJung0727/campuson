@@ -208,6 +208,15 @@ export default function DashboardPage() {
           <p className="mt-1 text-xs text-violet-600">태그별 취약도 · 진단 리포트</p>
         </Link>
 
+        <Link
+          href="/calendar"
+          className="rounded-xl border border-cyan-200 bg-cyan-50 p-6 shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-2xl">📅</div>
+          <h3 className="mt-2 font-semibold text-cyan-800">학습 캘린더</h3>
+          <p className="mt-1 text-xs text-cyan-600">일정 · 과제 마감 자동 동기화</p>
+        </Link>
+
         {hasDiagnostic === false && (
           <Link
             href="/diagnostic"
@@ -246,6 +255,16 @@ export default function DashboardPage() {
               <h3 className="mt-2 font-semibold text-indigo-800">학습 분석 리포트</h3>
               <p className="mt-1 text-xs text-indigo-600">성취도 · 비교 · 취약학생</p>
             </Link>
+            <Link href="/professor/osce" className="rounded-xl border border-teal-200 bg-teal-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">🏥</div>
+              <h3 className="mt-2 font-semibold text-teal-800">OSCE 시험 관리</h3>
+              <p className="mt-1 text-xs text-teal-600">스테이션 · 루브릭 · 리플레이</p>
+            </Link>
+            <Link href="/professor/comments" className="rounded-xl border border-orange-200 bg-orange-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">💬</div>
+              <h3 className="mt-2 font-semibold text-orange-800">학생 피드백</h3>
+              <p className="mt-1 text-xs text-orange-600">개인 코멘트 · 비공개 메모</p>
+            </Link>
           </>
         )}
 
@@ -260,6 +279,11 @@ export default function DashboardPage() {
               <div className="text-2xl">📈</div>
               <h3 className="mt-2 font-semibold text-indigo-800">운영 대시보드</h3>
               <p className="mt-1 text-xs text-indigo-600">메트릭 · 비용 · 장애</p>
+            </Link>
+            <Link href="/admin/schools" className="rounded-xl border border-blue-200 bg-blue-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">🏫</div>
+              <h3 className="mt-2 font-semibold text-blue-800">학교 관리</h3>
+              <p className="mt-1 text-xs text-blue-600">멀티테넌시 · 설정 · 학과</p>
             </Link>
           </>
         )}

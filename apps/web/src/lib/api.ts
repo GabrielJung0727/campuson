@@ -334,4 +334,69 @@ export const api = {
   compareClasses: () => apiFetch('/reports/compare'),
   getAtRiskStudents: (classId: string, params?: string) =>
     apiFetch(`/reports/class/${classId}/at-risk${params ? `?${params}` : ''}`),
+
+  // Schools (v0.8)
+  createSchool: (body: Record<string, unknown>) =>
+    apiFetch('/schools', { method: 'POST', body: JSON.stringify(body) }),
+  getSchools: (activeOnly = true) =>
+    apiFetch(`/schools?active_only=${activeOnly}`),
+  getSchool: (id: string) => apiFetch(`/schools/${id}`),
+  updateSchool: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/schools/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  getSchoolSettings: (id: string) => apiFetch(`/schools/${id}/settings`),
+  updateSchoolSettings: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/schools/${id}/settings`, { method: 'PATCH', body: JSON.stringify(body) }),
+  addSchoolDepartment: (schoolId: string, body: Record<string, unknown>) =>
+    apiFetch(`/schools/${schoolId}/departments`, { method: 'POST', body: JSON.stringify(body) }),
+  getSchoolDepartments: (schoolId: string) => apiFetch(`/schools/${schoolId}/departments`),
+  getSchoolDirectory: (schoolId: string, params?: string) =>
+    apiFetch(`/schools/${schoolId}/directory${params ? `?${params}` : ''}`),
+
+  // LMS (v0.8)
+  initiateSso: () => apiFetch('/lms/sso/initiate', { method: 'POST' }),
+  getLti13Login: () => apiFetch('/lms/lti13/login'),
+  createLmsCourse: (body: Record<string, unknown>) =>
+    apiFetch('/lms/courses', { method: 'POST', body: JSON.stringify(body) }),
+  getLmsCourses: () => apiFetch('/lms/courses'),
+  syncGrade: (body: Record<string, unknown>) =>
+    apiFetch('/lms/grades/sync', { method: 'POST', body: JSON.stringify(body) }),
+  getGradeHistory: (lmsCourseId: string, params?: string) =>
+    apiFetch(`/lms/grades/history/${lmsCourseId}${params ? `?${params}` : ''}`),
+
+  // OSCE (v0.8)
+  createOsceExam: (body: Record<string, unknown>) =>
+    apiFetch('/osce/exams', { method: 'POST', body: JSON.stringify(body) }),
+  getOsceExams: (department: string, activeOnly = true) =>
+    apiFetch(`/osce/exams?department=${department}&active_only=${activeOnly}`),
+  getOsceExam: (id: string) => apiFetch(`/osce/exams/${id}`),
+  createRubric: (body: Record<string, unknown>) =>
+    apiFetch('/osce/rubrics', { method: 'POST', body: JSON.stringify(body) }),
+  getRubrics: (department: string) => apiFetch(`/osce/rubrics?department=${department}`),
+  getRubric: (id: string) => apiFetch(`/osce/rubrics/${id}`),
+  recordPracticumEvent: (body: Record<string, unknown>) =>
+    apiFetch('/osce/events', { method: 'POST', body: JSON.stringify(body) }),
+  getSessionEvents: (sessionId: string) => apiFetch(`/osce/events/${sessionId}`),
+  detectTimingIssues: (body: Record<string, unknown>) =>
+    apiFetch('/osce/events/detect', { method: 'POST', body: JSON.stringify(body) }),
+  saveReplay: (body: Record<string, unknown>) =>
+    apiFetch('/osce/replay', { method: 'POST', body: JSON.stringify(body) }),
+  getReplay: (sessionId: string) => apiFetch(`/osce/replay/${sessionId}`),
+
+  // Calendar & Comments (v0.8)
+  createCalendarEvent: (body: Record<string, unknown>) =>
+    apiFetch('/calendar/events', { method: 'POST', body: JSON.stringify(body) }),
+  getCalendarEvents: (params?: string) =>
+    apiFetch(`/calendar/events${params ? `?${params}` : ''}`),
+  updateCalendarEvent: (id: string, body: Record<string, unknown>) =>
+    apiFetch(`/calendar/events/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteCalendarEvent: (id: string) =>
+    apiFetch(`/calendar/events/${id}`, { method: 'DELETE' }),
+  syncAssignmentDeadlines: () =>
+    apiFetch('/calendar/sync-assignments', { method: 'POST' }),
+  createComment: (body: Record<string, unknown>) =>
+    apiFetch('/comments', { method: 'POST', body: JSON.stringify(body) }),
+  getStudentComments: (studentId: string, includePrivate = false) =>
+    apiFetch(`/comments/student/${studentId}?include_private=${includePrivate}`),
+  getTargetComments: (targetType: string, targetId: string, includePrivate = false) =>
+    apiFetch(`/comments/target/${targetType}/${targetId}?include_private=${includePrivate}`),
 };

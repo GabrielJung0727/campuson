@@ -1,0 +1,46 @@
+{
+  "name": "CampusON — AI 학습튜터링 플랫폼",
+  "short_name": "CampusON",
+  "description": "경복대학교 보건계열 학생을 위한 AI 학습튜터링 플랫폼",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "medical"],
+  "lang": "ko",
+  "dir": "ltr",
+  "scope": "/",
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "학습 시작",
+      "url": "/quiz",
+      "description": "문제 풀기"
+    },
+    {
+      "name": "캘린더",
+      "url": "/calendar",
+      "description": "학습 일정 확인"
+    },
+    {
+      "name": "실습 평가",
+      "url": "/practicum",
+      "description": "실습 시나리오 연습"
+    }
+  ]
+}

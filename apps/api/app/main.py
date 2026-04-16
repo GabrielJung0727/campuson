@@ -11,12 +11,15 @@ from app.api.advanced_recommendation import router as advanced_rec_router
 from app.api.ai import router as ai_router
 from app.api.announcements import router as announcements_router
 from app.api.blueprint import router as blueprint_router
+from app.api.calendar import router as calendar_router
 from app.api.concept_tags import router as concept_tags_router
 from app.api.cost import router as cost_router
 from app.api.error_analysis import router as error_analysis_router
 from app.api.jobs import router as jobs_router
+from app.api.lms import router as lms_router
 from app.api.notifications import router as notifications_router
 from app.api.ops_dashboard import router as ops_dashboard_router
+from app.api.osce import router as osce_router
 from app.api.practicum import router as practicum_router
 from app.api.professor_reports import router as professor_reports_router
 from app.api.practicum_ws import router as practicum_ws_router
@@ -31,6 +34,7 @@ from app.api.password_reset import router as password_reset_router
 from app.api.question_reviews import router as question_reviews_router
 from app.api.questions import router as questions_router
 from app.api.recommendation import router as recommendation_router
+from app.api.schools import router as schools_router
 from app.api.stats import router as stats_router
 from app.api.users import router as users_router
 from app.core.config import settings
@@ -147,6 +151,22 @@ TAGS_METADATA = [
         "name": "reports",
         "description": "교수용 학습 분석 리포트 — 성취도/비교/취약학생 (v0.7)",
     },
+    {
+        "name": "schools",
+        "description": "멀티테넌시 학교 관리 — CRUD/설정/학과/디렉터리 (v0.8)",
+    },
+    {
+        "name": "lms",
+        "description": "LMS 연동 — LTI 1.3/SSO/성적 동기화 (v0.8)",
+    },
+    {
+        "name": "osce",
+        "description": "OSCE 시험/루브릭/이벤트/리플레이 (v0.8)",
+    },
+    {
+        "name": "calendar",
+        "description": "캘린더/과제 동기화/교수 코멘트 (v0.8)",
+    },
 ]
 
 
@@ -208,6 +228,11 @@ app.include_router(concept_tags_router, prefix=settings.api_prefix)
 app.include_router(advanced_rec_router, prefix=settings.api_prefix)
 app.include_router(error_analysis_router, prefix=settings.api_prefix)
 app.include_router(professor_reports_router, prefix=settings.api_prefix)
+# v0.8: 확장성 라우터
+app.include_router(schools_router, prefix=settings.api_prefix)
+app.include_router(lms_router, prefix=settings.api_prefix)
+app.include_router(osce_router, prefix=settings.api_prefix)
+app.include_router(calendar_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

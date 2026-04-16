@@ -1,9 +1,11 @@
 """User 모델 — 학생/교수/관리자/개발자 통합 테이블."""
 
+import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -91,6 +93,14 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         comment="학년 (1~4)",
     )
 
+    # --- v0.8 멀티테넌시 ---
+    school_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("schools.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="소속 학교 (멀티테넌시)",
+    )
+
     # --- 감사 ---
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -100,6 +110,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __table_args__ = (
         Index("ix_users_department_role", "department", "role"),
         Index("ix_users_status", "status"),
+        Index("ix_users_school", "school_id"),
     )
 
     def __repr__(self) -> str:
