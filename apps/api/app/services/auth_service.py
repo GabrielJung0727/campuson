@@ -4,7 +4,7 @@ import logging
 import random
 import string
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -23,7 +23,9 @@ from app.core.security import (
     validate_password_policy,
     verify_password,
 )
+from app.core.token_blacklist import revoke_refresh_family
 from app.models.enums import Role, UserStatus
+from app.models.token_blacklist import RefreshToken, RevocationReason
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest
 from app.services.student_no_validator import (
@@ -165,39 +167,123 @@ async def authenticate_user(db: AsyncSession, payload: LoginRequest) -> User:
     return user
 
 
-def issue_token_pair(user: User) -> tuple[str, str]:
-    """주어진 사용자에 대한 (access, refresh) 토큰 쌍 발급."""
+async def issue_token_pair(
+    db: AsyncSession,
+    user: User,
+    *,
+    user_agent: str | None = None,
+    ip_address: str | None = None,
+    family_id: uuid.UUID | None = None,
+    parent_jti: str | None = None,
+) -> tuple[str, str]:
+    """주어진 사용자에 대한 (access, refresh) 토큰 쌍 발급 + refresh 회전 추적.
+
+    - family_id: 기존 로그인 세션의 family을 이어가려면 전달 (rotation 시).
+                 None이면 새 family 생성 (최초 로그인).
+    - parent_jti: rotation 체인 추적용.
+    """
     access_token = create_access_token(
         subject=str(user.id),
         extra_claims={"role": user.role.value, "dept": user.department.value},
     )
     refresh_token = create_refresh_token(subject=str(user.id))
+
+    # refresh token 메타데이터 저장 (회전 추적)
+    refresh_payload = decode_token(refresh_token, expected_type="refresh")
+    rt_record = RefreshToken(
+        jti=refresh_payload["jti"],
+        family_id=family_id or uuid.uuid4(),
+        parent_jti=parent_jti,
+        user_id=user.id,
+        expires_at=datetime.fromtimestamp(refresh_payload["exp"], tz=UTC),
+        user_agent=(user_agent or "")[:500] or None,
+        ip_address=(ip_address or "")[:45] or None,
+    )
+    db.add(rt_record)
+    await db.flush()
+
     return access_token, refresh_token
 
 
-# --- 토큰 재발급 ---
-async def refresh_access_token(db: AsyncSession, refresh_token: str) -> str:
-    """리프레시 토큰으로 새로운 액세스 토큰 발급."""
+# --- 토큰 재발급 (회전 + 재사용 탐지) ---
+async def refresh_access_token(
+    db: AsyncSession,
+    refresh_token: str,
+    *,
+    user_agent: str | None = None,
+    ip_address: str | None = None,
+) -> tuple[str, str]:
+    """리프레시 토큰 회전(rotation) + 재사용 탐지.
+
+    동작
+    ----
+    1. JWT 서명/타입 검증
+    2. DB에서 해당 jti의 RefreshToken 찾기
+    3. 이미 used_at 이 있으면 → **재사용 탐지**: family 전체 revoke + 401
+    4. 이미 revoked_at 이 있으면 → 401
+    5. 현재 토큰을 used_at 설정 + 새 (access, refresh) 발급 (같은 family_id, parent_jti=현재 jti)
+
+    Returns: (new_access_token, new_refresh_token)
+    """
     try:
         payload = decode_token(refresh_token, expected_type="refresh")
     except TokenError as exc:
         raise InvalidCredentialsError("Invalid refresh token") from exc
 
+    jti = payload.get("jti")
     user_id_str = payload.get("sub")
-    if not user_id_str:
+    if not user_id_str or not jti:
         raise InvalidCredentialsError("Invalid refresh token payload")
     try:
         user_id = uuid.UUID(user_id_str)
     except ValueError as exc:
         raise InvalidCredentialsError("Invalid refresh token payload") from exc
 
+    # DB에서 refresh token 레코드 조회
+    rt_record = await db.scalar(
+        select(RefreshToken).where(RefreshToken.jti == jti)
+    )
+    if rt_record is None:
+        # DB에 없음 → 위조되었거나 0019 마이그레이션 이전의 토큰
+        raise InvalidCredentialsError("Refresh token not recognized")
+
+    # 재사용 탐지: 이미 used_at 이 있음 → family 전체 revoke
+    if rt_record.used_at is not None:
+        await revoke_refresh_family(
+            db, rt_record.family_id, RevocationReason.REUSE_DETECTED,
+        )
+        logger.warning(
+            "Refresh token reuse detected: user=%s family=%s jti=%s",
+            user_id, rt_record.family_id, jti,
+        )
+        raise InvalidCredentialsError(
+            "Refresh token reuse detected. All sessions terminated."
+        )
+
+    # 이미 revoke됨
+    if rt_record.revoked_at is not None:
+        raise InvalidCredentialsError("Refresh token has been revoked")
+
+    # 만료 확인
+    if rt_record.expires_at < datetime.now(UTC):
+        raise InvalidCredentialsError("Refresh token expired")
+
     user = await db.get(User, user_id)
     if user is None or user.status != UserStatus.ACTIVE:
         raise InvalidCredentialsError("User not found or inactive")
 
-    return create_access_token(
-        subject=str(user.id),
-        extra_claims={"role": user.role.value, "dept": user.department.value},
+    # 현재 토큰을 used로 마크
+    rt_record.used_at = datetime.now(UTC)
+    rt_record.revoke_reason = RevocationReason.ROTATED
+    await db.flush()
+
+    # 새 토큰 쌍 발급 (같은 family 유지)
+    return await issue_token_pair(
+        db, user,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        family_id=rt_record.family_id,
+        parent_jti=jti,
     )
 
 

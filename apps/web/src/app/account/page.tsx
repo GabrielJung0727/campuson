@@ -20,8 +20,19 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function AccountPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, logoutAll } = useAuth();
   const router = useRouter();
+  const [logoutAllLoading, setLogoutAllLoading] = useState(false);
+
+  async function handleLogoutAll() {
+    if (!confirm('모든 기기에서 로그아웃하시겠습니까? 다른 브라우저/기기에서도 즉시 로그아웃됩니다.')) return;
+    setLogoutAllLoading(true);
+    try {
+      await logoutAll();
+    } finally {
+      setLogoutAllLoading(false);
+    }
+  }
 
   // Password change
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
@@ -234,17 +245,35 @@ export default function AccountPage() {
       {/* ===== Danger Zone ===== */}
       <section className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-bold text-red-600">계정</h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold text-slate-700">로그아웃</div>
-            <div className="text-xs text-slate-400">현재 세션을 종료합니다.</div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-700">로그아웃</div>
+              <div className="text-xs text-slate-400">현재 세션을 종료합니다.</div>
+            </div>
+            <button
+              onClick={logout}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              로그아웃
+            </button>
           </div>
-          <button
-            onClick={logout}
-            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-          >
-            로그아웃
-          </button>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+            <div>
+              <div className="text-sm font-semibold text-slate-700">모든 기기에서 로그아웃</div>
+              <div className="text-xs text-slate-400">
+                다른 브라우저/기기에서도 즉시 로그아웃됩니다. 계정 보안이 의심될 때 사용하세요.
+              </div>
+            </div>
+            <button
+              onClick={handleLogoutAll}
+              disabled={logoutAllLoading}
+              className="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+            >
+              {logoutAllLoading ? '처리 중...' : '전체 로그아웃'}
+            </button>
+          </div>
         </div>
       </section>
     </main>

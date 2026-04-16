@@ -16,17 +16,21 @@ async def admin_only(user: User = Depends(require_roles(Role.ADMIN, Role.DEVELOP
 ```
 """
 
+import logging
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import TokenError, decode_token
+from app.core.token_blacklist import is_blacklisted, is_user_globally_revoked
 from app.db.session import get_db
 from app.models.enums import Role, UserStatus
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.api_prefix}/auth/login",
@@ -35,15 +39,18 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 
 async def get_current_user(
+    request: Request,
     token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """유효한 액세스 토큰에서 현재 사용자를 로드합니다.
 
+    v1.0 보안: 블랙리스트 + 전역 로그아웃 마커 체크 추가.
+
     Raises
     ------
     HTTPException 401
-        토큰이 없거나 유효하지 않을 때.
+        토큰이 없거나 유효하지 않을 때, 또는 블랙리스트에 있을 때.
     HTTPException 404
         토큰의 사용자가 존재하지 않을 때.
     """
@@ -62,16 +69,40 @@ async def get_current_user(
         raise credentials_exc from exc
 
     user_id_str = payload.get("sub")
-    if not user_id_str:
+    jti = payload.get("jti")
+    iat = payload.get("iat", 0)
+    if not user_id_str or not jti:
         raise credentials_exc
     try:
         user_id = uuid.UUID(user_id_str)
     except ValueError as exc:
         raise credentials_exc from exc
 
+    # v1.0 보안: 블랙리스트 체크
+    if await is_blacklisted(db, jti):
+        logger.info("Blacklisted token rejected: jti=%s user=%s", jti, user_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # v1.0 보안: 전역 로그아웃(logout-all) 이후 발급된 토큰인지 확인
+    if await is_user_globally_revoked(user_id, iat):
+        logger.info("Globally revoked token rejected: user=%s iat=%s", user_id, iat)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="All sessions were terminated. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # 토큰 메타데이터를 request.state에 저장 (로그아웃 엔드포인트에서 jti 접근용)
+    request.state.token_jti = jti
+    request.state.token_exp = payload.get("exp")
     return user
 
 

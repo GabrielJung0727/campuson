@@ -40,6 +40,7 @@ export function clearTokens() {
   localStorage.removeItem('user');
 }
 
+// v1.0 보안: refresh rotation — 새 refresh_token도 응답에 포함됨
 async function refreshAccessToken(): Promise<string | null> {
   const rt = getRefreshToken();
   if (!rt) return null;
@@ -52,10 +53,22 @@ async function refreshAccessToken(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     localStorage.setItem('access_token', data.access_token);
+    // rotation: 새 refresh_token도 저장 (이전 토큰은 서버에서 폐기됨)
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
     return data.access_token;
   } catch {
     return null;
   }
+}
+
+/** 401 + refresh 실패 시 강제 로그아웃 처리 (UI에서 구독). */
+function forceLogout(reason = 'session_expired') {
+  if (typeof window === 'undefined') return;
+  clearTokens();
+  // 강제 로그아웃 이벤트 발행 — AuthContext에서 감지해 리다이렉트
+  window.dispatchEvent(new CustomEvent('auth:force-logout', { detail: { reason } }));
 }
 
 export async function apiFetch<T = unknown>(
@@ -74,12 +87,18 @@ export async function apiFetch<T = unknown>(
 
   let res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
-  // 401이면 refresh 시도 후 재요청
+  // 401이면 refresh 1회 시도 → 실패하면 강제 로그아웃
   if (res.status === 401 && token) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers['Authorization'] = `Bearer ${newToken}`;
       res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+      // 재요청도 401이면 (블랙리스트 등) 강제 로그아웃
+      if (res.status === 401 && !path.startsWith('/auth/')) {
+        forceLogout('token_revoked');
+      }
+    } else if (!path.startsWith('/auth/')) {
+      forceLogout('refresh_failed');
     }
   }
 
@@ -106,6 +125,15 @@ export const api = {
   login: (body: { email: string; password: string }) =>
     apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   getMe: () => apiFetch('/users/me'),
+  // v1.0 보안: 로그아웃 (서버 측 토큰 폐기)
+  logout: () => {
+    const refresh = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+    return apiFetch('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
+    });
+  },
+  logoutAll: () => apiFetch('/auth/logout-all', { method: 'POST' }),
 
   // Diagnostic
   startDiagnostic: () => apiFetch('/diagnostic/start', { method: 'POST' }),

@@ -48,6 +48,7 @@ from app.models.professor_class import ClassStudent, ProfessorClass
 from app.models.question import Question
 from app.models.question_stats import AnswerInteraction, QuestionStats
 from app.models.school import School, SchoolDepartment, SchoolSettings
+from app.models.token_blacklist import RefreshToken, RevocationReason, TokenBlacklist
 from app.models.user import User
 
 __all__ = [
@@ -87,6 +88,9 @@ __all__ = [
     "PracticumRubric",
     "ProfessorComment",
     "Question",
+    "RefreshToken",
+    "RevocationReason",
+    "TokenBlacklist",
     "QuestionType",
     "Role",
     "School",

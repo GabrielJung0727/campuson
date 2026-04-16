@@ -406,3 +406,30 @@ async def handle_cost_aggregate(db: AsyncSession, job: BackgroundJob) -> None:
         result=result,
         progress_message="비용 집계 완료",
     )
+
+
+# === 만료 토큰 정리 (v1.0 보안) ===
+
+@register_handler(JobType.CLEANUP_EXPIRED_TOKENS)
+async def handle_cleanup_expired_tokens(db: AsyncSession, job: BackgroundJob) -> None:
+    """만료된 token_blacklist / refresh_tokens 행 DB에서 정리.
+
+    Redis는 TTL로 자동 정리되므로 DB만 GC 필요.
+    주기적으로 실행(예: 매 1시간)하여 테이블 크기 관리.
+    """
+    await update_job_status(
+        db, job.id, status=JobStatus.RUNNING, progress=0.1,
+        progress_message="만료 토큰 정리 중...",
+    )
+
+    from app.core.token_blacklist import cleanup_expired_tokens
+    result = await cleanup_expired_tokens(db)
+
+    await update_job_status(
+        db, job.id, status=JobStatus.SUCCESS, progress=1.0,
+        result=result,
+        progress_message=(
+            f"정리 완료: 블랙리스트 {result['blacklist_deleted']}건, "
+            f"refresh {result['refresh_deleted']}건 삭제"
+        ),
+    )

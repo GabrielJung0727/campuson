@@ -1,15 +1,25 @@
-"""인증 라우터 — 회원가입/이메일인증/로그인/토큰재발급/계정찾기."""
+"""인증 라우터 — 회원가입/이메일인증/로그인/토큰재발급/로그아웃/계정찾기."""
 
+import uuid
+from datetime import UTC, datetime
 from typing import Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.dependencies import get_current_active_user
 from app.core.redis import get_redis
+from app.core.security import TokenError, decode_token
+from app.core.token_blacklist import (
+    add_to_blacklist,
+    revoke_refresh_family,
+    revoke_user_all_tokens,
+)
 from app.db.session import get_db
+from app.models.token_blacklist import RefreshToken, RevocationReason
 from app.models.user import User
 from app.schemas.auth import (
     AccessTokenResponse,
@@ -45,6 +55,15 @@ from app.services.auth_service import (
     verify_email,
 )
 
+
+def _get_client_meta(request: Request) -> tuple[str | None, str | None]:
+    """요청에서 User-Agent + IP 추출."""
+    ua = request.headers.get("user-agent")
+    # X-Forwarded-For 우선 (프록시 뒤에서 실행 시)
+    forwarded = request.headers.get("x-forwarded-for")
+    ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None)
+    return ua, ip
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -59,6 +78,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 async def register(
     payload: RegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> TokenResponse | RegisterResponse:
@@ -88,7 +108,8 @@ async def register(
         )
 
     # 이미 verified (개발 환경 + SMTP 비활성)
-    access_token, refresh_token = issue_token_pair(user)
+    ua, ip = _get_client_meta(request)
+    access_token, refresh_token = await issue_token_pair(db, user, user_agent=ua, ip_address=ip)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -105,6 +126,7 @@ async def register(
 )
 async def verify_email_endpoint(
     payload: VerifyEmailRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> TokenResponse:
@@ -115,7 +137,8 @@ async def verify_email_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
-    access_token, refresh_token = issue_token_pair(user)
+    ua, ip = _get_client_meta(request)
+    access_token, refresh_token = await issue_token_pair(db, user, user_agent=ua, ip_address=ip)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -151,6 +174,7 @@ async def resend_verification_endpoint(
 )
 async def login(
     payload: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """이메일/비밀번호 로그인."""
@@ -165,7 +189,8 @@ async def login(
     except AccountInactiveError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-    access_token, refresh_token = issue_token_pair(user)
+    ua, ip = _get_client_meta(request)
+    access_token, refresh_token = await issue_token_pair(db, user, user_agent=ua, ip_address=ip)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -175,23 +200,136 @@ async def login(
 
 @router.post(
     "/refresh",
-    response_model=AccessTokenResponse,
-    responses={401: {"description": "리프레시 토큰이 유효하지 않음"}},
+    response_model=TokenResponse,
+    responses={401: {"description": "리프레시 토큰이 유효하지 않음 또는 재사용 탐지"}},
+    summary="토큰 회전(rotation): 새 access+refresh 쌍 발급",
+    description=(
+        "리프레시 토큰으로 새 토큰 쌍 발급. **이전 리프레시 토큰은 즉시 폐기되며, 재사용 시 family 전체가 revoke됩니다.**"
+    ),
 )
 async def refresh(
     payload: RefreshTokenRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
-) -> AccessTokenResponse:
-    """리프레시 토큰으로 액세스 토큰 재발급."""
+) -> TokenResponse:
+    """리프레시 토큰 회전 (rotation) + 재사용 탐지."""
     try:
-        access_token = await refresh_access_token(db, payload.refresh_token)
+        ua, ip = _get_client_meta(request)
+        access_token, new_refresh_token = await refresh_access_token(
+            db, payload.refresh_token, user_agent=ua, ip_address=ip,
+        )
     except InvalidCredentialsError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
-    return AccessTokenResponse(access_token=access_token)
+
+    # 새 access 토큰에서 user_id 추출해서 UserPublic 직렬화
+    from app.core.security import decode_token as _decode
+    payload_data = _decode(access_token, expected_type="access")
+    user = await db.get(User, uuid.UUID(payload_data["sub"]))
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+        user=UserPublic.model_validate(user),
+    )
+
+
+# === 로그아웃 (v1.0 보안) ===
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="로그아웃 — 현재 세션만 종료",
+    description=(
+        "현재 access token의 jti를 블랙리스트에 추가하고, 제공된 refresh token family 전체를 revoke합니다."
+    ),
+)
+async def logout(
+    request: Request,
+    payload: RefreshTokenRequest | None = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """현재 세션 로그아웃.
+
+    동작
+    ----
+    1. 현재 access token의 jti를 블랙리스트에 추가 (남은 exp 동안 유효)
+    2. refresh_token이 body에 있으면 해당 family 전체를 revoke
+    """
+    access_jti = getattr(request.state, "token_jti", None)
+    access_exp = getattr(request.state, "token_exp", None)
+
+    if access_jti and access_exp:
+        await add_to_blacklist(
+            db,
+            jti=access_jti,
+            user_id=current_user.id,
+            expires_at=datetime.fromtimestamp(access_exp, tz=UTC),
+            reason=RevocationReason.LOGOUT,
+        )
+
+    # refresh token family revoke (있는 경우)
+    if payload and payload.refresh_token:
+        try:
+            rt_payload = decode_token(payload.refresh_token, expected_type="refresh")
+            rt_jti = rt_payload.get("jti")
+            if rt_jti:
+                rt_record = await db.scalar(
+                    select(RefreshToken).where(RefreshToken.jti == rt_jti)
+                )
+                if rt_record:
+                    await revoke_refresh_family(
+                        db, rt_record.family_id, RevocationReason.LOGOUT,
+                    )
+        except TokenError:
+            pass  # 이미 무효한 refresh token은 무시
+
+    return MessageResponse(message="로그아웃되었습니다.")
+
+
+@router.post(
+    "/logout-all",
+    response_model=MessageResponse,
+    summary="모든 기기에서 로그아웃",
+    description=(
+        "사용자의 모든 세션(모든 기기)을 종료합니다. 현재 토큰뿐만 아니라 이전에 발급된 모든 토큰이 무효화됩니다."
+    ),
+)
+async def logout_all(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """모든 세션 종료.
+
+    동작
+    ----
+    1. Redis에 user_revoke:{user_id} 마커 설정 (현재 시각)
+       → 이 시점 이전 iat를 가진 토큰은 모두 거부됨
+    2. DB의 모든 유효한 refresh token을 revoke
+    3. 현재 access token도 블랙리스트 추가
+    """
+    revoked_count = await revoke_user_all_tokens(
+        db, current_user.id, RevocationReason.LOGOUT_ALL,
+    )
+
+    # 현재 access token도 명시적으로 블랙리스트 추가
+    access_jti = getattr(request.state, "token_jti", None)
+    access_exp = getattr(request.state, "token_exp", None)
+    if access_jti and access_exp:
+        await add_to_blacklist(
+            db,
+            jti=access_jti,
+            user_id=current_user.id,
+            expires_at=datetime.fromtimestamp(access_exp, tz=UTC),
+            reason=RevocationReason.LOGOUT_ALL,
+        )
+
+    return MessageResponse(
+        message=f"모든 기기에서 로그아웃되었습니다. ({revoked_count}개 세션 종료)"
+    )
 
 
 # === 아이디(이메일) 찾기 ===

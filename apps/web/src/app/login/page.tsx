@@ -1,18 +1,35 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const REASON_MESSAGES: Record<string, string> = {
+  session_expired: '세션이 만료되었습니다. 다시 로그인해주세요.',
+  token_revoked: '토큰이 폐기되었습니다. 다시 로그인해주세요.',
+  refresh_failed: '자동 로그인에 실패했습니다. 다시 로그인해주세요.',
+  logout_all: '모든 기기에서 로그아웃되었습니다.',
+};
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
+
+  // 강제 로그아웃 이유를 읽어서 안내 표시
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason && REASON_MESSAGES[reason]) {
+      setInfo(REASON_MESSAGES[reason]);
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,6 +63,12 @@ export default function LoginPage() {
           className="space-y-4 rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
         >
           <h2 className="text-xl font-semibold">로그인</h2>
+
+          {info && (
+            <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+              {info}
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">

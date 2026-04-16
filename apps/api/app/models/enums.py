@@ -275,6 +275,7 @@ class JobType(str, enum.Enum):
     AI_LOG_ANALYSIS = "AI_LOG_ANALYSIS"  # AI 피드백 로그 분석
     EMAIL_SEND = "EMAIL_SEND"            # 메일/알림 발송
     COST_AGGREGATE = "COST_AGGREGATE"    # 비용 집계
+    CLEANUP_EXPIRED_TOKENS = "CLEANUP_EXPIRED_TOKENS"  # 만료 토큰 GC (v1.0 보안)
 
     @property
     def label_ko(self) -> str:
@@ -289,6 +290,7 @@ class JobType(str, enum.Enum):
             JobType.AI_LOG_ANALYSIS: "AI 로그 분석",
             JobType.EMAIL_SEND: "메일 발송",
             JobType.COST_AGGREGATE: "비용 집계",
+            JobType.CLEANUP_EXPIRED_TOKENS: "만료 토큰 정리",
         }[self]
 
 
