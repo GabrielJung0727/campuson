@@ -15,6 +15,8 @@ from app.api.calendar import router as calendar_router
 from app.api.concept_tags import router as concept_tags_router
 from app.api.cost import router as cost_router
 from app.api.error_analysis import router as error_analysis_router
+from app.api.feature_flags import router as feature_flags_router
+from app.api.file_upload import router as file_upload_router
 from app.api.jobs import router as jobs_router
 from app.api.lms import router as lms_router
 from app.api.notifications import router as notifications_router
@@ -38,8 +40,9 @@ from app.api.schools import router as schools_router
 from app.api.stats import router as stats_router
 from app.api.users import router as users_router
 from app.core.config import settings
+from app.core.error_handlers import register_error_handlers
 from app.core.redis import close_redis, get_redis_client
-from app.middleware import AuditLogMiddleware, MonitoringMiddleware
+from app.middleware import AuditLogMiddleware, MonitoringMiddleware, RateLimitMiddleware
 from app.services.monitoring import setup_opentelemetry, setup_sentry, setup_structlog
 
 # v0.6: 구조화 로깅 초기화
@@ -187,10 +190,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# --- 전역 에러 핸들러 (v0.9: 통합 에러 포맷) ---
+register_error_handlers(app)
+
 # --- Middleware (역순으로 등록 — 마지막에 등록한 것이 가장 바깥) ---
 # CORS는 가장 바깥쪽에 두는 것이 일반적
 app.add_middleware(AuditLogMiddleware)
 app.add_middleware(MonitoringMiddleware)  # v0.6: API 레이턴시 + 구조화 로깅
+app.add_middleware(RateLimitMiddleware)  # v0.9: Redis sliding-window rate limit
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -233,6 +240,9 @@ app.include_router(schools_router, prefix=settings.api_prefix)
 app.include_router(lms_router, prefix=settings.api_prefix)
 app.include_router(osce_router, prefix=settings.api_prefix)
 app.include_router(calendar_router, prefix=settings.api_prefix)
+# v0.9: 기술 부채/인프라 — 파일 업로드 파이프라인 + 피처 플래그
+app.include_router(file_upload_router, prefix=settings.api_prefix)
+app.include_router(feature_flags_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

@@ -2,5 +2,6 @@
 
 from app.middleware.audit import AuditLogMiddleware
 from app.middleware.monitoring import MonitoringMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 
-__all__ = ["AuditLogMiddleware", "MonitoringMiddleware"]
+__all__ = ["AuditLogMiddleware", "MonitoringMiddleware", "RateLimitMiddleware"]
