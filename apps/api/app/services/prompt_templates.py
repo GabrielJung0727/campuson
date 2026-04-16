@@ -1,15 +1,15 @@
-"""프롬프트 템플릿 시스템 — Day 6 4종 템플릿.
+"""프롬프트 템플릿 시스템 — v0.5 신뢰성 강화.
 
 특징
 ----
 - `system` + `user_template` 구조
 - 학생의 학습 수준(`level`)과 학과(`department`)에 따른 톤 조정
 - 한국어 보건의료 도메인 특화
-
-확장 계획
---------
-- Day 9 RAG 통합 시 `context_docs` 슬롯 추가
-- Day 11 추천 엔진과 통합되어 학생별 history 컨텍스트 주입
+- **과목별 시스템 프롬프트 분리** (간호/물치/치위생 전문 지시)
+- **source-grounded answer** — RAG 출처 없으면 단정 답변 방지
+- **구조화된 응답** — 교재 기준 설명 / 요약 / 오답 원인 / 추가 학습 포인트
+- **확신도 표시** — 근거 부족 시 ⚠️ 검토 필요 태그
+- **고지 문구** — 학습 참고용 고지 강제
 """
 
 from __future__ import annotations
@@ -67,16 +67,72 @@ def _department_label(dept: Department | None) -> str:
     return "보건계열 학생"
 
 
-# === EXPLAIN: 문제 해설 생성 ===
+# === 과목별 시스템 프롬프트 확장 (v0.5) ===
+_DEPT_SYSTEM_DIRECTIVES: dict[Department, str] = {
+    Department.NURSING: (
+        "당신의 전문 영역은 간호학입니다. "
+        "성인간호학, 기본간호학, 모성간호학, 아동간호학, 정신간호학, 지역사회간호학, "
+        "간호관리학 등 간호사 국가시험 출제 범위를 정확히 이해하고 있습니다. "
+        "임상 간호 실무와 관련된 설명은 한국 간호 교과서 및 KNCLEX 기준을 따르세요."
+    ),
+    Department.PHYSICAL_THERAPY: (
+        "당신의 전문 영역은 물리치료학입니다. "
+        "신경계물리치료, 근골격계물리치료, 심호흡물리치료, 전기치료학, 운동치료학, "
+        "해부학, 생리학 등 물리치료사 국가시험 출제 범위를 정확히 이해하고 있습니다. "
+        "치료 기법과 적응증/금기증은 한국 물리치료 교과서 기준을 따르세요."
+    ),
+    Department.DENTAL_HYGIENE: (
+        "당신의 전문 영역은 치위생학입니다. "
+        "구강해부학, 구강생리학, 구강병리학, 치과재료학, 치위생학개론, 지역사회구강보건학, "
+        "치주학, 예방치학 등 치과위생사 국가시험 출제 범위를 정확히 이해하고 있습니다. "
+        "구강 관리 및 치위생 실무는 한국 치위생 교과서 기준을 따르세요."
+    ),
+}
+
+
+def _department_system_directive(dept: Department | None) -> str:
+    """학과별 전문 영역 시스템 지시문."""
+    if dept and dept in _DEPT_SYSTEM_DIRECTIVES:
+        return _DEPT_SYSTEM_DIRECTIVES[dept]
+    return "당신은 한국 보건의료 분야의 전문 교육 튜터입니다."
+
+
+# === 신뢰성 관련 공통 지시문 (v0.5) ===
+_RELIABILITY_DIRECTIVES = (
+    "\n\n## 신뢰성 규칙 (반드시 준수)\n"
+    "1. **출처 기반 답변**: 참고 자료가 제공된 경우 반드시 [숫자] 형태로 인용하세요. "
+    "인용 없이 주장하지 마세요.\n"
+    "2. **확신도 표시**: 참고 자료에 직접적 근거가 있으면 '✅ 교재 근거 있음'을, "
+    "참고 자료가 부족하거나 일반 지식으로 답하는 경우 '⚠️ 검토 필요 — 교수 또는 교재로 확인하세요'를 "
+    "답변 끝에 반드시 표기하세요.\n"
+    "3. **단정 금지**: 참고 자료가 없고 확신할 수 없는 내용은 '정확한 답변을 위해 교재를 확인해 주세요'라고 안내하세요. "
+    "추측으로 그럴듯한 답변을 만들지 마세요.\n"
+    "4. **고지 문구**: 답변 맨 끝에 반드시 다음 문구를 포함하세요: "
+    "'---\\n📚 본 답변은 학습 참고용이며, 최종 판단은 담당 교수님 또는 공식 교재를 기준으로 하세요.'\n"
+    "5. **위험 내용 주의**: 의료 행위 지시, 약물 용량 단정, 환자 안전에 영향을 줄 수 있는 "
+    "내용은 반드시 '실제 임상에서는 지도교수의 확인이 필요합니다'를 병기하세요.\n"
+)
+
+_STRUCTURED_EXPLAIN_DIRECTIVES = (
+    "\n\n## 답변 구조 (반드시 이 형식을 따르세요)\n"
+    "1. **📖 교재 기준 설명**: 정답의 핵심 개념을 교재/참고자료 기반으로 설명\n"
+    "2. **📝 요약**: 2-3줄로 핵심만 정리\n"
+    "3. **❌ 오답 원인**: (오답인 경우) 왜 틀렸는지, 선지별 분석\n"
+    "4. **💡 추가 학습 포인트**: 관련 개념, 연결 주제, 출제 빈출 포인트\n"
+)
+
+
+# === EXPLAIN: 문제 해설 생성 (v0.5 — 구조화 + 신뢰성) ===
 EXPLAIN_TEMPLATE = PromptTemplate(
-    name="explain_v1",
+    name="explain_v2",
     request_type=AIRequestType.EXPLAIN,
     system=(
-        "당신은 한국 보건의료 국가시험 대비 전문 튜터입니다. "
+        "{department_system_directive} "
         "학생의 풀이 결과를 바탕으로 문제 해설을 제공합니다. "
         "정확성을 최우선으로 하고, 추측하거나 모르는 내용은 모른다고 말하세요. "
-        "응답은 마크다운으로 작성하며 다음 4섹션을 포함합니다: "
-        "**핵심 정답** / **왜 그런가** / **틀린 선지 분석** / **꼭 기억할 한 줄 요약**."
+        "응답은 마크다운으로 작성합니다."
+        "{reliability_directives}"
+        "{structured_explain_directives}"
     ),
     user_template=(
         "{department_label}의 문제 해설 요청입니다.\n"
@@ -87,26 +143,27 @@ EXPLAIN_TEMPLATE = PromptTemplate(
         "## 학생의 응답\n{selected_answer_text} (인덱스 {selected_answer_index})\n"
         "결과: {result_label}\n\n"
         "## 출처/배경 (참고용)\n{explanation_or_blank}\n\n"
-        "위 정보를 바탕으로 해설을 작성해 주세요."
+        "위 정보를 바탕으로 정해진 구조에 따라 해설을 작성해 주세요."
     ),
 )
 
 
-# === QA: 자유 질의응답 ===
+# === QA: 자유 질의응답 (v0.5 — 신뢰성 강화) ===
 QA_TEMPLATE = PromptTemplate(
-    name="qa_v1",
+    name="qa_v2",
     request_type=AIRequestType.QA,
     system=(
-        "당신은 한국 보건의료 국가시험 대비 전문 튜터입니다. "
-        "학생의 질문에 대해 정확하고 친절하게 답변합니다. "
-        "확신할 수 없는 내용은 추측하지 말고 모른다고 말하거나 추가 학습을 권유하세요. "
+        "{department_system_directive} "
+        "학생��� 질문에 대해 정확하고 친절하게 ��변���니다. "
+        "확신할 수 없는 내용은 추측하지 말��� 모른다고 말���거나 추가 학습을 권유하세요. "
         "답변은 한국어 마크다운으로 작성합니다."
+        "{reliability_directives}"
     ),
     user_template=(
         "{department_label}의 질문입니다.\n"
         "{level_guide}\n\n"
         "## 질문\n{user_question}\n\n"
-        "친절하지만 학술적으로 정확하게 답변해 주세요."
+        "친절하지만 학술적으로 정확하게 답변해 주세���."
     ),
 )
 
@@ -182,7 +239,7 @@ def build_explain_context(
     department: Department | None,
     level: Level | None,
 ) -> dict[str, str]:
-    """EXPLAIN 템플릿용 컨텍스트 dict 빌더."""
+    """EXPLAIN 템플릿용 컨텍스�� dict 빌더."""
     choices_text = "\n".join(
         f"  {i + 1}. {c}" for i, c in enumerate(choices)
     )
@@ -200,6 +257,9 @@ def build_explain_context(
         result_label = "정답" if is_correct else "오답"
 
     return {
+        "department_system_directive": _department_system_directive(department),
+        "reliability_directives": _RELIABILITY_DIRECTIVES,
+        "structured_explain_directives": _STRUCTURED_EXPLAIN_DIRECTIVES,
         "department_label": _department_label(department),
         "level_guide": _level_guide(level),
         "question_text": question_text,
@@ -222,6 +282,8 @@ def build_qa_context(
     level: Level | None,
 ) -> dict[str, str]:
     return {
+        "department_system_directive": _department_system_directive(department),
+        "reliability_directives": _RELIABILITY_DIRECTIVES,
         "department_label": _department_label(department),
         "level_guide": _level_guide(level),
         "user_question": user_question,

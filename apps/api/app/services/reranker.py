@@ -37,6 +37,8 @@ EXACT_MATCH_BONUS = 0.4
 LEAD_MATCH_BONUS = 0.2
 LENGTH_PENALTY = -0.1
 RRF_WEIGHT = 1.0
+# v0.5: 교수 승인(PUBLISHED) 문서 보너스
+PUBLISHED_SOURCE_BONUS = 0.15
 
 
 @dataclass
@@ -103,7 +105,11 @@ class RuleBasedReranker(RerankerBase):
             length_signal = 0.0
         signals["length"] = length_signal
 
-        total = prior + exact_bonus + lead_bonus + length_signal
+        # 5) v0.5: 출처가 있는 문서 보너스 (교수 검증 가능성 높음)
+        source_bonus = PUBLISHED_SOURCE_BONUS if hit.source else 0.0
+        signals["source_authority"] = source_bonus
+
+        total = prior + exact_bonus + lead_bonus + length_signal + source_bonus
         return total, signals
 
     def rerank(self, query: str, hits: list[SearchHit], top_k: int) -> list[RerankResult]:

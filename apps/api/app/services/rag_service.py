@@ -100,6 +100,7 @@ async def retrieve(
     include_unpublished: bool = False,
 ) -> RAGContext:
     """쿼리로 KB를 검색하고 LLM context 포맷으로 반환."""
+    # v0.5: 교수 승인(PUBLISHED) 문서 최우선 — 학생 RAG에서는 PUBLISHED만 기본 사용
     statuses = (
         (
             KBReviewStatus.DRAFT,
@@ -107,7 +108,7 @@ async def retrieve(
             KBReviewStatus.PUBLISHED,
         )
         if include_unpublished
-        else (KBReviewStatus.PUBLISHED, KBReviewStatus.REVIEWED, KBReviewStatus.DRAFT)
+        else (KBReviewStatus.PUBLISHED,)
     )
 
     req = SearchRequest(

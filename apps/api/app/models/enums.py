@@ -162,6 +162,27 @@ class AnnouncementType(str, enum.Enum):
     URGENT = "URGENT"
 
 
+# ── 문항 검수 (v0.5) ──
+
+
+class QuestionReviewStatus(str, enum.Enum):
+    """문항 검수 상태."""
+
+    PENDING_REVIEW = "PENDING_REVIEW"  # 검수 대기
+    APPROVED = "APPROVED"              # 교수 승인 → 학생 공개
+    REJECTED = "REJECTED"              # 반려
+    REVISION_REQUESTED = "REVISION_REQUESTED"  # 수정 요청
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            QuestionReviewStatus.PENDING_REVIEW: "검수 대기",
+            QuestionReviewStatus.APPROVED: "승인됨",
+            QuestionReviewStatus.REJECTED: "반려됨",
+            QuestionReviewStatus.REVISION_REQUESTED: "수정 요청",
+        }[self]
+
+
 # ── 실습 평가 (v0.4) ──
 
 

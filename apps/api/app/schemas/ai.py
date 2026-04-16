@@ -1,4 +1,4 @@
-"""AI 관련 Pydantic 스키마."""
+"""AI 관련 Pydantic 스키마 (v0.5 신뢰성 강화)."""
 
 import uuid
 from datetime import datetime
@@ -49,14 +49,35 @@ class CitationItem(BaseModel):
     snippet: str
 
 
+class ContentWarningItem(BaseModel):
+    """위험 문장 패턴 탐지 결과 (v0.5)."""
+
+    pattern_name: str
+    matched_text: str
+    severity: str  # "info" | "warning" | "critical"
+
+
 class AIGenerationResponse(BaseModel):
-    """일반 LLM 응답 형식."""
+    """일반 LLM 응답 형식 (v0.5 신뢰성 확장)."""
 
     request_type: AIRequestType
     output_text: str
     metadata: AIGenerationMetadata
     rag_used: bool = False
     citations: list[CitationItem] = Field(default_factory=list)
+    # v0.5 신뢰성 필드
+    confidence: str = Field(
+        default="UNVERIFIED",
+        description="AI 답변 확신도: HIGH / MEDIUM / LOW / UNVERIFIED",
+    )
+    content_warnings: list[ContentWarningItem] = Field(
+        default_factory=list,
+        description="위험 문장 패턴 탐지 결과 (약물 용량, 임상 지시 등)",
+    )
+    disclaimer: str = Field(
+        default="📚 본 답변은 학습 참고용이며, 최종 판단은 담당 교수님 또는 공식 교재를 기준으로 하세요.",
+        description="학습 참고용 고지 문구",
+    )
 
 
 # === AI 요청 로그 조회 ===

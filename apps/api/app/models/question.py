@@ -1,12 +1,14 @@
-"""QuestionBank 모델 — 국가고시 문제은행."""
+"""QuestionBank 모델 — 국가고시 문제은행 (v0.5 메타데이터 확장)."""
 
-from sqlalchemy import CheckConstraint, Index, Integer, String, Text, text
+import uuid
+
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import Department, Difficulty, QuestionType
+from app.models.enums import Department, Difficulty, QuestionReviewStatus, QuestionType
 
 
 class Question(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -78,6 +80,55 @@ class Question(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     source_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # --- v0.5: 검수 상태 + 확장 메타데이터 ---
+    review_status: Mapped[QuestionReviewStatus] = mapped_column(
+        SAEnum(
+            QuestionReviewStatus,
+            name="question_review_status_enum",
+            native_enum=True,
+            create_type=True,
+        ),
+        nullable=False,
+        server_default=text("'PENDING_REVIEW'"),
+        comment="검수 상태: PENDING_REVIEW → APPROVED (학생 공개)",
+    )
+    learning_objective: Mapped[str | None] = mapped_column(
+        String(300),
+        nullable=True,
+        comment="학습목표 (예: '호흡기계 감염 환자의 간호 중재를 설명할 수 있다')",
+    )
+    concept_tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String(100)),
+        nullable=False,
+        server_default=text("'{}'::varchar[]"),
+        comment="개념 태그 (예: ['산소포화��', '흡인간호', '체위배액'])",
+    )
+    national_exam_mapping: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="국가고시 출제 영역 매핑 (예: '성인간호학 > 호흡기계 > 폐렴')",
+    )
+    answer_rationale: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="정답 근거 (교수 검수 시 작성하는 공식 근거)",
+    )
+    professor_explanation: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="교수 공식 해설 (AI 해설과 별도)",
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="문항 생성자 (AI 생성이면 NULL 가능)",
+    )
+    discrimination_index: Mapped[float | None] = mapped_column(
+        nullable=True,
+        comment="변별도 지수 (0.0~1.0, 통계 기반 자동 계산)",
+    )
+
     __table_args__ = (
         CheckConstraint("correct_answer >= 0", name="ck_questions_correct_answer_nonneg"),
         CheckConstraint(
@@ -86,6 +137,8 @@ class Question(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         Index("ix_questions_department_subject", "department", "subject"),
         Index("ix_questions_difficulty", "difficulty"),
         Index("ix_questions_tags_gin", "tags", postgresql_using="gin"),
+        Index("ix_questions_review_status", "review_status"),
+        Index("ix_questions_concept_tags_gin", "concept_tags", postgresql_using="gin"),
     )
 
     def __repr__(self) -> str:

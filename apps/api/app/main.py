@@ -19,6 +19,7 @@ from app.api.health import router as health_router
 from app.api.kb import router as kb_router
 from app.api.learning_history import router as learning_history_router
 from app.api.password_reset import router as password_reset_router
+from app.api.question_reviews import router as question_reviews_router
 from app.api.questions import router as questions_router
 from app.api.recommendation import router as recommendation_router
 from app.api.stats import router as stats_router
@@ -149,6 +150,7 @@ app.include_router(assignments_router, prefix=settings.api_prefix)
 app.include_router(announcements_router, prefix=settings.api_prefix)
 app.include_router(practicum_router, prefix=settings.api_prefix)
 app.include_router(practicum_ws_router, prefix=settings.api_prefix)
+app.include_router(question_reviews_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

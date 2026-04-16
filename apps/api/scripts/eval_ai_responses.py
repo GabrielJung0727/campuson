@@ -1,14 +1,17 @@
-"""AI 응답 품질 평가 테스트셋 + runner.
+"""AI 응답 품질 평가 테스트셋 + runner (v0.5 신뢰성 검증 추가).
 
-Day 10 — 30개 테스트 질문에 대해 QA/Explain API를 호출하고
-간단한 규칙 기반 평가를 수행한다.
-
-평가 지표
---------
+v0.5 평가 지표
+--------------
 1. **응답 길이**: 100자 이상, 3000자 이하
-2. **핵심 키워드 포함**: 기대 키워드 중 ≥60% 포함
+2. **핵심 키워드 포함**: 기대 키워드 중 >=60% 포함
 3. **지연 시간**: <15초
 4. **인용 포함 여부**: RAG 사용 시 citation이 1개 이상
+5. **형식 일관성**: 같은 질문에 대해 형식이 깨지지 않는지 (마크다운 구조)
+6. **금지 답변 정책**: 확신 없는 내용에 "검토 필요" 또는 "교재 확인" 포함
+7. **hallucination 방지**: RAG 출처 없을 때 단정적 표현 사용 여부
+8. **고지 문구 포함**: 학습 참고용 고지가 포함되어 있는지
+9. **확신도 정확성**: confidence 레벨이 RAG 상태와 일치하는지
+10. **위험 문장 감지**: content_warnings가 적절히 발생하는지
 
 사용법
 ------
@@ -217,6 +220,13 @@ class EvalResult:
     rag_used: bool
     citation_count: int
     notes: str = ""
+    # v0.5 신뢰성 지표
+    confidence: str = ""
+    has_disclaimer: bool = False
+    has_review_warning: bool = False
+    has_markdown_structure: bool = False
+    content_warning_count: int = 0
+    no_hallucination: bool = True  # 출처 없이 단정적 답변하지 않았는지
 
 
 def _keyword_coverage(output: str, keywords: list[str]) -> float:
@@ -226,8 +236,45 @@ def _keyword_coverage(output: str, keywords: list[str]) -> float:
     return round(hit / len(keywords), 3)
 
 
+def _check_disclaimer(output: str) -> bool:
+    """학습 참고용 고지 문구가 포함되어 있는지."""
+    indicators = ["학습 참고용", "교수님", "공식 교재", "참고용"]
+    return any(ind in output for ind in indicators)
+
+
+def _check_review_warning(output: str, rag_used: bool) -> bool:
+    """RAG 미사용 시 '검토 필요' 또는 '교재 확인' 경고가 있는지."""
+    if rag_used:
+        return True  # RAG 있으면 통과
+    warning_indicators = ["검토 필요", "교재를 확인", "교재로 확인", "확인이 필요"]
+    return any(ind in output for ind in warning_indicators)
+
+
+def _check_markdown_structure(output: str) -> bool:
+    """마크다운 헤더나 볼드 등 구조화 요소가 있는지."""
+    import re
+    return bool(re.search(r"(\*\*.*?\*\*|#{1,3}\s|📖|📝|❌|💡|✅|⚠️)", output))
+
+
+def _check_hallucination(output: str, rag_used: bool, citation_count: int) -> bool:
+    """RAG 없이 단정적 답변을 했는지 (False면 hallucination 의심)."""
+    if rag_used and citation_count > 0:
+        return True  # 출처 있으면 OK
+    # 단정적 표현 탐지
+    import re
+    definitive_patterns = [
+        r"확실히\s.+입니다",
+        r"반드시\s.+해야\s*합니다",
+        r"항상\s.+입니다",
+    ]
+    for p in definitive_patterns:
+        if re.search(p, output):
+            return False
+    return True
+
+
 async def run_case(db, user, case: EvalCase) -> EvalResult:
-    """단일 케이스 실행. explain은 question_id가 필요해서 Day 10 evaluator는 QA 위주로 운영."""
+    """단일 케이스 실행."""
     from app.services.ai_service import AIServiceError, answer_question
 
     try:
@@ -247,6 +294,9 @@ async def run_case(db, user, case: EvalCase) -> EvalResult:
 
     output = result.output_text
     coverage = _keyword_coverage(output, case.expected_keywords)
+    rag_used = result.rag_context_used
+    citation_count = len(result.citations)
+
     return EvalResult(
         case_id=case.case_id,
         kind=case.kind,
@@ -254,8 +304,14 @@ async def run_case(db, user, case: EvalCase) -> EvalResult:
         output_length=len(output),
         has_keywords=coverage,
         latency_ms=result.log.latency_ms,
-        rag_used=result.rag_context_used,
-        citation_count=len(result.citations),
+        rag_used=rag_used,
+        citation_count=citation_count,
+        confidence=result.confidence.value,
+        has_disclaimer=_check_disclaimer(output),
+        has_review_warning=_check_review_warning(output, rag_used),
+        has_markdown_structure=_check_markdown_structure(output),
+        content_warning_count=len(result.content_warnings),
+        no_hallucination=_check_hallucination(output, rag_used, citation_count),
     )
 
 
@@ -290,43 +346,60 @@ async def main_async(args):
             result = await run_case(session, user, case)
             results.append(result)
             logger.info(
-                "  success=%s len=%d kw=%.2f latency=%dms rag=%s citations=%d",
+                "  success=%s len=%d kw=%.2f latency=%dms rag=%s cit=%d conf=%s disc=%s warn=%s",
                 result.success,
                 result.output_length,
                 result.has_keywords,
                 result.latency_ms,
                 result.rag_used,
                 result.citation_count,
+                result.confidence,
+                result.has_disclaimer,
+                result.has_review_warning,
             )
 
     await engine.dispose()
 
+    n = max(1, len(results))
+
     # 요약
     logger.info("=" * 60)
     logger.info("📊 평가 결과 요약")
-    logger.info("   총 케이스:       %d", len(results))
-    logger.info("   성공:           %d", sum(1 for r in results if r.success))
-    logger.info(
-        "   키워드 커버리지 평균: %.2f",
-        sum(r.has_keywords for r in results) / max(1, len(results)),
-    )
-    logger.info(
-        "   평균 응답 길이:  %d자",
-        sum(r.output_length for r in results) // max(1, len(results)),
-    )
-    logger.info(
-        "   평균 지연시간:   %dms",
-        sum(r.latency_ms for r in results) // max(1, len(results)),
-    )
-    logger.info("   RAG 사용:       %d", sum(1 for r in results if r.rag_used))
+    logger.info("   총 케이스:           %d", len(results))
+    logger.info("   성공:               %d", sum(1 for r in results if r.success))
+    logger.info("   키워드 커버리지 평균: %.2f", sum(r.has_keywords for r in results) / n)
+    logger.info("   평균 응답 길이:      %d자", sum(r.output_length for r in results) // n)
+    logger.info("   평균 지연시간:       %dms", sum(r.latency_ms for r in results) // n)
+    logger.info("   RAG 사용:           %d", sum(1 for r in results if r.rag_used))
+    logger.info("─" * 40)
+    logger.info("📋 v0.5 신뢰성 지표")
+    logger.info("   고지 문구 포함:      %d/%d (%.0f%%)", sum(1 for r in results if r.has_disclaimer), len(results), sum(1 for r in results if r.has_disclaimer) / n * 100)
+    logger.info("   검토 경고 포함:      %d/%d (%.0f%%)", sum(1 for r in results if r.has_review_warning), len(results), sum(1 for r in results if r.has_review_warning) / n * 100)
+    logger.info("   마크다운 구조:       %d/%d (%.0f%%)", sum(1 for r in results if r.has_markdown_structure), len(results), sum(1 for r in results if r.has_markdown_structure) / n * 100)
+    logger.info("   hallucination 없음:  %d/%d (%.0f%%)", sum(1 for r in results if r.no_hallucination), len(results), sum(1 for r in results if r.no_hallucination) / n * 100)
+    confidence_dist = {}
+    for r in results:
+        confidence_dist[r.confidence] = confidence_dist.get(r.confidence, 0) + 1
+    logger.info("   확신도 분포:         %s", confidence_dist)
     logger.info("=" * 60)
 
     # 실패한 케이스만 표시
-    failures = [r for r in results if not r.success or r.has_keywords < 0.5]
+    failures = [r for r in results if not r.success or r.has_keywords < 0.5 or not r.has_disclaimer or not r.no_hallucination]
     if failures:
-        logger.warning("⚠️  저성능 케이스 (%d):", len(failures))
+        logger.warning("⚠️  저성능/정책위반 케이스 (%d):", len(failures))
         for r in failures[:10]:
-            logger.warning("   %s kw=%.2f %s", r.case_id, r.has_keywords, r.notes)
+            issues = []
+            if not r.success:
+                issues.append("FAIL")
+            if r.has_keywords < 0.5:
+                issues.append(f"kw={r.has_keywords:.2f}")
+            if not r.has_disclaimer:
+                issues.append("NO_DISCLAIMER")
+            if not r.no_hallucination:
+                issues.append("HALLUCINATION")
+            if not r.has_review_warning:
+                issues.append("NO_WARNING")
+            logger.warning("   %s: %s %s", r.case_id, ", ".join(issues), r.notes)
 
     return 0
 

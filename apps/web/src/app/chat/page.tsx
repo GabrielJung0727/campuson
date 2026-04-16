@@ -5,11 +5,20 @@ import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
+interface ContentWarning {
+  pattern_name: string;
+  matched_text: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  citations?: Array<{ number: number; document_title: string; snippet: string }>;
+  citations?: Array<{ number: number; document_title: string; snippet: string; source?: string }>;
   metadata?: { latency_ms: number; provider: string; rag_used: boolean };
+  confidence?: string;
+  content_warnings?: ContentWarning[];
+  disclaimer?: string;
 }
 
 export default function ChatPage() {
@@ -40,9 +49,12 @@ export default function ChatPage() {
     try {
       const data = (await api.aiQA(userMsg.content)) as {
         output_text: string;
-        citations: Array<{ number: number; document_title: string; snippet: string }>;
+        citations: Array<{ number: number; document_title: string; snippet: string; source?: string }>;
         metadata: { latency_ms: number; provider: string };
         rag_used: boolean;
+        confidence: string;
+        content_warnings: ContentWarning[];
+        disclaimer: string;
       };
       const assistantMsg: Message = {
         role: 'assistant',
@@ -53,6 +65,9 @@ export default function ChatPage() {
           provider: data.metadata.provider,
           rag_used: data.rag_used,
         },
+        confidence: data.confidence,
+        content_warnings: data.content_warnings,
+        disclaimer: data.disclaimer,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: unknown) {
@@ -107,21 +122,75 @@ export default function ChatPage() {
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
 
-              {/* Citations */}
-              {msg.citations && msg.citations.length > 0 && (
-                <div className="mt-3 border-t border-slate-200 pt-2">
-                  <p className="mb-1 text-xs font-semibold text-slate-500">참고 자료</p>
-                  {msg.citations.map((c) => (
-                    <div key={c.number} className="text-xs text-slate-500">
-                      [{c.number}] {c.document_title}
+              {/* Content Warnings (v0.5) */}
+              {msg.content_warnings && msg.content_warnings.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {msg.content_warnings.filter(w => w.severity !== 'info').map((w, wi) => (
+                    <div
+                      key={wi}
+                      className={`rounded px-2 py-1 text-xs ${
+                        w.severity === 'critical'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {w.severity === 'critical' ? '🚨' : '⚠️'} 주의: 이 내용은 실제 임상에서 지도교수의 확인이 필요합니다
                     </div>
                   ))}
                 </div>
               )}
 
+              {/* Citations with snippets (v0.5 enhanced) */}
+              {msg.citations && msg.citations.length > 0 && (
+                <div className="mt-3 border-t border-slate-200 pt-2">
+                  <p className="mb-1 text-xs font-semibold text-slate-500">참고 자료</p>
+                  {msg.citations.map((c) => (
+                    <div key={c.number} className="mb-1.5 rounded bg-slate-50 p-1.5 text-xs text-slate-600">
+                      <span className="font-semibold">[{c.number}]</span> {c.document_title}
+                      {c.source && <span className="ml-1 text-slate-400">({c.source})</span>}
+                      {c.snippet && (
+                        <p className="mt-0.5 text-[10px] text-slate-400 line-clamp-2">{c.snippet}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Confidence Badge (v0.5) */}
+              {msg.confidence && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span
+                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      msg.confidence === 'HIGH'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : msg.confidence === 'MEDIUM'
+                          ? 'bg-blue-100 text-blue-700'
+                          : msg.confidence === 'LOW'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {msg.confidence === 'HIGH'
+                      ? '✅ 교재 근거 있음'
+                      : msg.confidence === 'MEDIUM'
+                        ? '📖 부분 근거'
+                        : msg.confidence === 'LOW'
+                          ? '⚠️ 검토 필요'
+                          : '❓ 미검증'}
+                  </span>
+                </div>
+              )}
+
+              {/* Disclaimer (v0.5) */}
+              {msg.disclaimer && (
+                <div className="mt-2 border-t border-slate-100 pt-1.5 text-[10px] text-slate-400">
+                  {msg.disclaimer}
+                </div>
+              )}
+
               {/* Metadata */}
               {msg.metadata && (
-                <div className="mt-2 text-xs text-slate-400">
+                <div className="mt-1 text-[10px] text-slate-400">
                   {msg.metadata.latency_ms}ms |{' '}
                   {msg.metadata.rag_used ? 'RAG 사용' : 'RAG 미사용'}
                 </div>

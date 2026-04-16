@@ -224,6 +224,18 @@ export const api = {
   aiEvaluateSession: (id: string, body: Record<string, unknown>) =>
     apiFetch(`/practicum/sessions/${id}/ai-evaluate`, { method: 'POST', body: JSON.stringify(body) }),
 
+  // Question Reviews (v0.5)
+  getReviewQueue: (params?: string) =>
+    apiFetch(`/reviews/queue${params ? `?${params}` : ''}`),
+  submitReview: (questionId: string, body: Record<string, unknown>) =>
+    apiFetch(`/reviews/${questionId}`, { method: 'POST', body: JSON.stringify(body) }),
+  getReviewHistory: (questionId: string) =>
+    apiFetch(`/reviews/${questionId}/history`),
+  getEditHistory: (questionId: string) =>
+    apiFetch(`/reviews/${questionId}/edits`),
+  compareExplanations: (questionId: string) =>
+    apiFetch(`/reviews/${questionId}/compare`),
+
   // Dev Center (v0.3)
   devHealthCheck: () => apiFetch('/dev/health-check'),
   devStats: () => apiFetch('/dev/stats'),

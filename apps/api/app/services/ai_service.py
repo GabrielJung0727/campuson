@@ -1,21 +1,25 @@
-"""AI 서비스 — 문제 해설/QA + RAG + 호출 로깅 + latency 측정.
+"""AI 서비스 — 문제 해설/QA + RAG + 호출 로깅 + latency 측정 + 신뢰성.
 
-Day 10 업그레이드
+v0.5 신뢰성 강화
 ----------------
-- explain / qa 모두 RAG 통합 (KB 검색 결과를 프롬프트에 주입)
+- explain / qa 모두 RAG 통합 (KB 검색 결과�� 프롬프트에 주입)
 - 학생 프로파일(level/취약영역) 동적 주입
 - 인용(citation) 추출 및 로그 저장
-
-LLM Gateway를 호출하고 결과를 AIRequestLog에 기록한다.
-실패해도 로그는 남긴다.
+- **확신도(confidence) 판정** — RAG 근거 유무 기반
+- **위험 문장 패턴 필터링** — 의료 위험 표현 경고 태그 삽입
+- **교수 승인 지식 우선 검색** — PUBLISHED 상태 문서 최우선
+- **RAG 결과 없을 시 단정 답변 방지 로직**
+- **AI 생성 결과 평가 로그** — confidence, has_citations, content_warnings 메타데이터 저장
 """
 
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,16 +48,94 @@ from app.services.rag_service import (
 )
 
 
+class ConfidenceLevel(str, Enum):
+    """AI 답변 확신도 — RAG 근거 유무 기반."""
+    HIGH = "HIGH"          # RAG 출처 있음 + 인용 사용됨
+    MEDIUM = "MEDIUM"      # RAG 출처 있으나 인용 불충분
+    LOW = "LOW"            # RAG 출처 없음, 일반 지식 기반
+    UNVERIFIED = "UNVERIFIED"  # RAG 미사용 또는 실패
+
+
+@dataclass
+class ContentWarning:
+    """위험 문장 패턴 탐지 결과."""
+    pattern_name: str
+    matched_text: str
+    severity: str  # "info" | "warning" | "critical"
+
+
 @dataclass
 class AIExplainResult:
-    """Explain/QA 서비스 결과 컨테이너."""
+    """Explain/QA 서비스 결과 컨테이너 (v0.5 확장)."""
 
     log: AIRequestLog
     output_text: str
     citations: list[Citation]
     rag_context_used: bool
+    # v0.5 신뢰성 필드
+    confidence: ConfidenceLevel = ConfidenceLevel.UNVERIFIED
+    content_warnings: list[ContentWarning] = field(default_factory=list)
+    disclaimer: str = "📚 본 답변은 학습 참고용이며, 최종 판단은 담당 교수님 또는 공식 교재를 기준으로 하세요."
+
 
 logger = logging.getLogger(__name__)
+
+
+# === 위험 문장 패턴 (v0.5) ===
+_CONTENT_SAFETY_PATTERNS: list[tuple[str, re.Pattern, str]] = [
+    (
+        "drug_dosage",
+        re.compile(r"\d+\s*(mg|ml|cc|mcg|iu|unit|단위)\s*(투여|주사|복용|투입)", re.IGNORECASE),
+        "critical",
+    ),
+    (
+        "clinical_instruction",
+        re.compile(r"(즉시|바로|직접)\s*(투여|시행|수행|실시)하", re.IGNORECASE),
+        "warning",
+    ),
+    (
+        "definitive_diagnosis",
+        re.compile(r"(확정\s*진단|~로\s*진단됩니다|진단할\s*수\s*있습니다)", re.IGNORECASE),
+        "warning",
+    ),
+    (
+        "absolute_statement",
+        re.compile(r"(반드시|절대로|무조건|항상)\s+.{2,20}(해야|합니다|입니다)", re.IGNORECASE),
+        "info",
+    ),
+]
+
+
+def _detect_content_warnings(text: str) -> list[ContentWarning]:
+    """응답에서 위험 문장 패턴을 감지."""
+    warnings: list[ContentWarning] = []
+    for name, pattern, severity in _CONTENT_SAFETY_PATTERNS:
+        for match in pattern.finditer(text):
+            warnings.append(ContentWarning(
+                pattern_name=name,
+                matched_text=match.group()[:100],
+                severity=severity,
+            ))
+    return warnings
+
+
+def _compute_confidence(
+    rag_used: bool,
+    citations: list[Citation],
+    output_text: str,
+) -> ConfidenceLevel:
+    """RAG 사용 여부와 인용 수를 기반으로 확신도를 판정."""
+    if not rag_used:
+        return ConfidenceLevel.UNVERIFIED
+    if not citations:
+        return ConfidenceLevel.LOW
+    # 인용이 실제 응답에 사용되었는지 검사
+    citation_refs_in_text = len(re.findall(r"\[\d+\]", output_text))
+    if citation_refs_in_text >= 2:
+        return ConfidenceLevel.HIGH
+    if citation_refs_in_text >= 1 or len(citations) >= 1:
+        return ConfidenceLevel.MEDIUM
+    return ConfidenceLevel.LOW
 
 
 class AIServiceError(Exception):
@@ -178,14 +260,25 @@ async def explain_question(
     if student_block:
         user_prompt = f"{student_block}\n\n{user_prompt}"
 
-    # RAG 컨텍스트 주입
-    if rag_ctx and rag_ctx.formatted_text:
+    # RAG 컨텍스트 주입 + source-grounded 강제 (v0.5)
+    rag_available = bool(rag_ctx and rag_ctx.formatted_text)
+    if rag_available:
         rag_block = (
             "## 참고 자료 (KB에서 검색됨)\n"
-            "답변에서 해당 자료를 참조할 때 [숫자] 형태로 인용하세요.\n\n"
+            "답변에서 해당 자료를 참조할 때 반드시 [숫자] 형태로 인용하세요.\n"
+            "참고 자료에 없는 내용은 추측하지 말고, '교재를 확인해 주세요'로 안내하세요.\n\n"
             f"{rag_ctx.formatted_text}"
         )
         user_prompt = f"{user_prompt}\n\n{rag_block}"
+    else:
+        # RAG 없을 시 단정 방지 블록 삽입
+        no_rag_block = (
+            "\n\n## ⚠️ 참고 자료 없음\n"
+            "지식베이스에서 관련 자료를 찾지 못했습니다. "
+            "일반적인 교과서 지식으로만 답하되, 단정적으로 서술하지 마세요. "
+            "답변 끝에 반드시 '⚠️ 검토 필요 — 교수 또는 교재로 확인하세요'를 포함하세요."
+        )
+        user_prompt = f"{user_prompt}{no_rag_block}"
 
     gateway = get_llm_gateway()
     start = time.monotonic()
@@ -218,6 +311,30 @@ async def explain_question(
             for c in rag_ctx.citations
         ]
 
+    # v0.5: 확신도 판정 + 위험 문장 감지
+    confidence = ConfidenceLevel.UNVERIFIED
+    content_warnings: list[ContentWarning] = []
+    if success and result:
+        confidence = _compute_confidence(rag_available, used_citations, result.output_text)
+        content_warnings = _detect_content_warnings(result.output_text)
+
+    # v0.5: 평가 메타데이터를 로그에 포함
+    eval_metadata = {
+        "confidence": confidence.value,
+        "has_citations": len(used_citations) > 0,
+        "citation_count": len(used_citations),
+        "rag_available": rag_available,
+        "content_warning_count": len(content_warnings),
+        "content_warnings": [
+            {"pattern": w.pattern_name, "severity": w.severity}
+            for w in content_warnings[:10]
+        ],
+    }
+    if retrieved_docs_meta is None:
+        retrieved_docs_meta = []
+    # eval_metadata를 retrieved_docs에 합쳐서 저장 (기존 스키마 호환)
+    log_retrieved = retrieved_docs_meta + [{"_eval_metadata": eval_metadata}]
+
     log = await _persist_log(
         db,
         user=user,
@@ -231,7 +348,7 @@ async def explain_question(
         success=success,
         error_message=error_message,
         provider_enum=gateway.provider_name,
-        retrieved_docs=retrieved_docs_meta,
+        retrieved_docs=log_retrieved,
     )
     if not success:
         raise AIServiceError(error_message or "LLM 호출 실패")
@@ -240,7 +357,9 @@ async def explain_question(
         log=log,
         output_text=result.output_text,  # type: ignore[union-attr]
         citations=used_citations,
-        rag_context_used=bool(rag_ctx and rag_ctx.formatted_text),
+        rag_context_used=rag_available,
+        confidence=confidence,
+        content_warnings=content_warnings,
     )
 
 
@@ -272,14 +391,24 @@ async def answer_question(
     if student_block:
         user_prompt = f"{student_block}\n\n{user_prompt}"
 
-    if rag_ctx and rag_ctx.formatted_text:
+    # v0.5: source-grounded + 단정 방지
+    rag_available = bool(rag_ctx and rag_ctx.formatted_text)
+    if rag_available:
         rag_block = (
             "## 참고 자료 (KB에서 검색됨)\n"
-            "답변에서 해당 자료를 참조할 때 [숫자] 형태로 인용하세요. "
+            "답변에서 해당 자료를 참조할 때 반드시 [숫자] 형태로 인용하세요. "
             "참고 자료에 없는 내용은 일반 지식으로 답하되, 불확실하면 모른다고 말하세요.\n\n"
             f"{rag_ctx.formatted_text}"
         )
         user_prompt = f"{user_prompt}\n\n{rag_block}"
+    else:
+        no_rag_block = (
+            "\n\n## ⚠️ 참고 자료 없음\n"
+            "지식베이스에서 관련 자료를 찾지 못했습니다. "
+            "일반적인 교과서 지식으로만 답하되, 단정적으로 서술하지 마세요. "
+            "답변 끝에 반드시 '⚠️ 검토 필요 — 교수 또는 교재로 확인하세요'를 포함하세요."
+        )
+        user_prompt = f"{user_prompt}{no_rag_block}"
 
     gateway = get_llm_gateway()
     start = time.monotonic()
@@ -311,6 +440,28 @@ async def answer_question(
             for c in rag_ctx.citations
         ]
 
+    # v0.5: 확신도 + 위험 문장 감지
+    confidence = ConfidenceLevel.UNVERIFIED
+    content_warnings: list[ContentWarning] = []
+    if success and result:
+        confidence = _compute_confidence(rag_available, used_citations, result.output_text)
+        content_warnings = _detect_content_warnings(result.output_text)
+
+    eval_metadata = {
+        "confidence": confidence.value,
+        "has_citations": len(used_citations) > 0,
+        "citation_count": len(used_citations),
+        "rag_available": rag_available,
+        "content_warning_count": len(content_warnings),
+        "content_warnings": [
+            {"pattern": w.pattern_name, "severity": w.severity}
+            for w in content_warnings[:10]
+        ],
+    }
+    if retrieved_docs_meta is None:
+        retrieved_docs_meta = []
+    log_retrieved = retrieved_docs_meta + [{"_eval_metadata": eval_metadata}]
+
     log = await _persist_log(
         db,
         user=user,
@@ -324,7 +475,7 @@ async def answer_question(
         success=success,
         error_message=error_message,
         provider_enum=gateway.provider_name,
-        retrieved_docs=retrieved_docs_meta,
+        retrieved_docs=log_retrieved,
     )
     if not success:
         raise AIServiceError(error_message or "LLM 호출 실패")
@@ -333,7 +484,9 @@ async def answer_question(
         log=log,
         output_text=result.output_text,  # type: ignore[union-attr]
         citations=used_citations,
-        rag_context_used=bool(rag_ctx and rag_ctx.formatted_text),
+        rag_context_used=rag_available,
+        confidence=confidence,
+        content_warnings=content_warnings,
     )
 
 

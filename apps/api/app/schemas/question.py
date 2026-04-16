@@ -1,11 +1,11 @@
-"""QuestionBank Pydantic 스키마."""
+"""QuestionBank Pydantic 스키마 (v0.5 확장 메타데이터)."""
 
 import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import Department, Difficulty, QuestionType
+from app.models.enums import Department, Difficulty, QuestionReviewStatus, QuestionType
 
 
 class QuestionBase(BaseModel):
@@ -23,6 +23,11 @@ class QuestionBase(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=20)
     source: str | None = Field(default=None, max_length=200)
     source_year: int | None = Field(default=None, ge=1990, le=2100)
+    # v0.5 확장 메타데이터
+    learning_objective: str | None = Field(default=None, max_length=300)
+    concept_tags: list[str] = Field(default_factory=list, max_length=30)
+    national_exam_mapping: str | None = Field(default=None, max_length=200)
+    answer_rationale: str | None = None
 
     @model_validator(mode="after")
     def _check_correct_answer_in_range(self) -> "QuestionBase":
@@ -54,14 +59,24 @@ class QuestionUpdate(BaseModel):
     tags: list[str] | None = Field(default=None, max_length=20)
     source: str | None = Field(default=None, max_length=200)
     source_year: int | None = Field(default=None, ge=1990, le=2100)
+    # v0.5
+    learning_objective: str | None = Field(default=None, max_length=300)
+    concept_tags: list[str] | None = Field(default=None, max_length=30)
+    national_exam_mapping: str | None = Field(default=None, max_length=200)
+    answer_rationale: str | None = None
+    professor_explanation: str | None = None
 
 
 class QuestionResponse(QuestionBase):
-    """문제 응답 (학생/일반)."""
+    """문제 응답 (교수/관리자용 — 검수 메타데이터 포함)."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    review_status: QuestionReviewStatus = QuestionReviewStatus.PENDING_REVIEW
+    professor_explanation: str | None = None
+    discrimination_index: float | None = None
+    created_by: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -83,6 +98,7 @@ class QuestionPublic(BaseModel):
     question_text: str
     choices: list[str]
     tags: list[str]
+    concept_tags: list[str] = Field(default_factory=list)
 
 
 class QuestionListResponse(BaseModel):

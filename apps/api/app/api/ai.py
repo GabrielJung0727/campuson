@@ -28,6 +28,7 @@ from app.schemas.ai import (
     AIRequestLogItem,
     AIRequestLogListResponse,
     CitationItem,
+    ContentWarningItem,
     ExplainRequest,
     QARequest,
 )
@@ -114,6 +115,16 @@ async def explain(
             )
             for c in result.citations
         ],
+        confidence=result.confidence.value,
+        content_warnings=[
+            ContentWarningItem(
+                pattern_name=w.pattern_name,
+                matched_text=w.matched_text,
+                severity=w.severity,
+            )
+            for w in result.content_warnings
+        ],
+        disclaimer=result.disclaimer,
     )
 
 
@@ -159,6 +170,16 @@ async def qa(
             )
             for c in result.citations
         ],
+        confidence=result.confidence.value,
+        content_warnings=[
+            ContentWarningItem(
+                pattern_name=w.pattern_name,
+                matched_text=w.matched_text,
+                severity=w.severity,
+            )
+            for w in result.content_warnings
+        ],
+        disclaimer=result.disclaimer,
     )
 
 

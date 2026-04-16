@@ -46,6 +46,12 @@ export default function QuizPage() {
   const [solving, setSolving] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
   const [aiExplain, setAiExplain] = useState('');
+  const [aiExplainMeta, setAiExplainMeta] = useState<{
+    confidence?: string;
+    citations?: Array<{ number: number; document_title: string; snippet: string; source?: string }>;
+    disclaimer?: string;
+    content_warnings?: Array<{ pattern_name: string; severity: string }>;
+  } | null>(null);
   const [loadingExplain, setLoadingExplain] = useState(false);
 
   // v0.2: 트래킹 + 통계
@@ -132,8 +138,18 @@ export default function QuizPage() {
     try {
       const data = (await api.aiExplain(q.id, answered.history_id)) as {
         output_text: string;
+        confidence?: string;
+        citations?: Array<{ number: number; document_title: string; snippet: string; source?: string }>;
+        disclaimer?: string;
+        content_warnings?: Array<{ pattern_name: string; severity: string }>;
       };
       setAiExplain(data.output_text);
+      setAiExplainMeta({
+        confidence: data.confidence,
+        citations: data.citations,
+        disclaimer: data.disclaimer,
+        content_warnings: data.content_warnings,
+      });
     } catch {
       setAiExplain('AI 해설을 불러올 수 없습니다.');
     } finally {
@@ -149,6 +165,7 @@ export default function QuizPage() {
     setAnswered(null);
     setSelected(null);
     setAiExplain('');
+    setAiExplainMeta(null);
     setStartTime(Date.now());
     setCurrent((c) => c + 1);
     // v0.2: 트래킹 리셋
@@ -289,7 +306,7 @@ export default function QuizPage() {
             </div>
           )}
 
-          {/* AI Explain */}
+          {/* AI Explain (v0.5 — 신뢰성 강화) */}
           {!aiExplain ? (
             <button
               onClick={handleExplain}
@@ -300,10 +317,65 @@ export default function QuizPage() {
             </button>
           ) : (
             <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-              <h4 className="mb-2 text-sm font-semibold text-purple-800">AI 해설</h4>
+              <div className="mb-2 flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-purple-800">AI 해설</h4>
+                {/* Confidence Badge */}
+                {aiExplainMeta?.confidence && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      aiExplainMeta.confidence === 'HIGH'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : aiExplainMeta.confidence === 'MEDIUM'
+                          ? 'bg-blue-100 text-blue-700'
+                          : aiExplainMeta.confidence === 'LOW'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {aiExplainMeta.confidence === 'HIGH'
+                      ? '✅ 교재 근거 있음'
+                      : aiExplainMeta.confidence === 'MEDIUM'
+                        ? '📖 부분 근거'
+                        : aiExplainMeta.confidence === 'LOW'
+                          ? '⚠️ 검토 필요'
+                          : '❓ 미검증'}
+                  </span>
+                )}
+              </div>
+
+              {/* Content Warnings */}
+              {aiExplainMeta?.content_warnings && aiExplainMeta.content_warnings.filter(w => w.severity !== 'info').length > 0 && (
+                <div className="mb-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  ⚠️ 이 해설에는 임상 관련 내용이 포함되어 있습니다. 실제 임상 적용 시 지도교수의 확인이 필요합니다.
+                </div>
+              )}
+
               <div className="prose prose-sm max-w-none text-purple-900 whitespace-pre-wrap">
                 {aiExplain}
               </div>
+
+              {/* Citations */}
+              {aiExplainMeta?.citations && aiExplainMeta.citations.length > 0 && (
+                <div className="mt-3 border-t border-purple-200 pt-2">
+                  <p className="mb-1 text-xs font-semibold text-purple-600">참고 자료</p>
+                  {aiExplainMeta.citations.map((c) => (
+                    <div key={c.number} className="mb-1 rounded bg-purple-50/50 p-1 text-xs text-purple-700">
+                      <span className="font-semibold">[{c.number}]</span> {c.document_title}
+                      {c.source && <span className="ml-1 text-purple-400">({c.source})</span>}
+                      {c.snippet && (
+                        <p className="mt-0.5 text-[10px] text-purple-400 line-clamp-2">{c.snippet}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Disclaimer */}
+              {aiExplainMeta?.disclaimer && (
+                <div className="mt-2 border-t border-purple-200 pt-1.5 text-[10px] text-purple-400">
+                  {aiExplainMeta.disclaimer}
+                </div>
+              )}
             </div>
           )}
 
