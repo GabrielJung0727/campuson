@@ -20,7 +20,11 @@
     "docker:logs": "docker compose logs -f",
     "api:dev": "cd apps/api && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "api:migrate": "cd apps/api && alembic upgrade head",
-    "api:makemigration": "cd apps/api && alembic revision --autogenerate -m"
+    "api:makemigration": "cd apps/api && alembic revision --autogenerate -m",
+    "generate:types": "cd apps/api && python ../../scripts/generate_api_types.py",
+    "api:test": "cd apps/api && python -m pytest tests/ -v",
+    "api:test:cov": "cd apps/api && python -m pytest tests/ -v --cov=app --cov-report=term-missing",
+    "check:contracts": "cd apps/api && python ../../scripts/check_api_contracts.py"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.18.0",
