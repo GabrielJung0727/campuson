@@ -9,6 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api.ai import router as ai_router
 from app.api.announcements import router as announcements_router
+from app.api.cost import router as cost_router
+from app.api.jobs import router as jobs_router
+from app.api.notifications import router as notifications_router
+from app.api.ops_dashboard import router as ops_dashboard_router
 from app.api.practicum import router as practicum_router
 from app.api.practicum_ws import router as practicum_ws_router
 from app.api.assignments import router as assignments_router
@@ -26,12 +30,13 @@ from app.api.stats import router as stats_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.redis import close_redis, get_redis_client
-from app.middleware import AuditLogMiddleware
+from app.middleware import AuditLogMiddleware, MonitoringMiddleware
+from app.services.monitoring import setup_opentelemetry, setup_sentry, setup_structlog
 
-logging.basicConfig(
-    level=settings.log_level,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+# v0.6: 구조화 로깅 초기화
+setup_structlog()
+setup_sentry()
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +52,9 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Redis connected")
     except Exception as exc:  # noqa: BLE001
         logger.warning("⚠️  Redis ping failed: %s", exc)
+
+    # v0.6: OpenTelemetry 계측
+    setup_opentelemetry(app)
 
     yield
 
@@ -102,6 +110,22 @@ TAGS_METADATA = [
         "name": "recommendation",
         "description": "학습 추천 문제 세트 (Day 11 추천 엔진)",
     },
+    {
+        "name": "jobs",
+        "description": "백그라운드 작업 큐 상태 추적 (v0.6)",
+    },
+    {
+        "name": "notifications",
+        "description": "인앱 알림 / 이메일 / 웹 푸시 (v0.6)",
+    },
+    {
+        "name": "ops-dashboard",
+        "description": "관리자 운영 대시보드 — 10종 메트릭 (v0.6)",
+    },
+    {
+        "name": "cost",
+        "description": "LLM 비용 추적 / 모델 라우팅 / quota (v0.6)",
+    },
 ]
 
 
@@ -125,6 +149,7 @@ app = FastAPI(
 # --- Middleware (역순으로 등록 — 마지막에 등록한 것이 가장 바깥) ---
 # CORS는 가장 바깥쪽에 두는 것이 일반적
 app.add_middleware(AuditLogMiddleware)
+app.add_middleware(MonitoringMiddleware)  # v0.6: API 레이턴시 + 구조화 로깅
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -151,6 +176,11 @@ app.include_router(announcements_router, prefix=settings.api_prefix)
 app.include_router(practicum_router, prefix=settings.api_prefix)
 app.include_router(practicum_ws_router, prefix=settings.api_prefix)
 app.include_router(question_reviews_router, prefix=settings.api_prefix)
+# v0.6: 운영성 라우터
+app.include_router(jobs_router, prefix=settings.api_prefix)
+app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(ops_dashboard_router, prefix=settings.api_prefix)
+app.include_router(cost_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

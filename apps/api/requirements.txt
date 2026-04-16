@@ -35,6 +35,21 @@ anthropic==0.39.0
 openai==1.51.0
 tiktoken==0.8.0
 
+# --- Background Jobs (v0.6) ---
+arq==0.26.1
+
+# --- Structured Logging (v0.6) ---
+structlog==24.4.0
+
+# --- Observability (v0.6) ---
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-sqlalchemy==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+sentry-sdk[fastapi]==2.14.0
+
 # --- Dev ---
 black==24.8.0
 ruff==0.6.9

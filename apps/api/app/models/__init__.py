@@ -8,6 +8,8 @@ from app.models.announcement import Announcement
 from app.models.assignment import Assignment, AssignmentSubmission, AssignmentStatus
 from app.models.ai_request_log import AIRequestLog
 from app.models.audit_log import AuditLog
+from app.models.background_job import BackgroundJob
+from app.models.cost_daily import CostDaily
 from app.models.diagnostic import DiagnosticAnswer, DiagnosticTest
 from app.models.enums import (
     AIRequestType,
@@ -17,14 +19,18 @@ from app.models.enums import (
     ErrorType,
     EvalGrade,
     EvalStatus,
+    JobStatus,
+    JobType,
     KBReviewStatus,
     LLMProvider,
     Level,
+    NotificationCategory,
     PracticumCategory,
     QuestionType,
     Role,
     UserStatus,
 )
+from app.models.notification import Notification
 from app.models.practicum import PracticumScenario, PracticumSession
 from app.models.kb_document import KBChunk, KBDocument
 from app.models.learning_history import LearningHistory
@@ -38,6 +44,8 @@ __all__ = [
     "AIRequestLog",
     "AIRequestType",
     "AuditLog",
+    "BackgroundJob",
+    "CostDaily",
     "Department",
     "DiagnosticAnswer",
     "DiagnosticTest",
@@ -45,12 +53,16 @@ __all__ = [
     "EmbeddingProvider",
     "ErrorType",
     "ExplanationPreference",
+    "JobStatus",
+    "JobType",
     "KBChunk",
     "KBDocument",
     "KBReviewStatus",
     "LLMProvider",
     "LearningHistory",
     "Level",
+    "Notification",
+    "NotificationCategory",
     "Question",
     "QuestionType",
     "Role",

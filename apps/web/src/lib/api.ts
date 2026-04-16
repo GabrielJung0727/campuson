@@ -242,4 +242,57 @@ export const api = {
   devSettings: () => apiFetch('/dev/settings'),
   updateUserRole: (userId: string, body: Record<string, unknown>) =>
     apiFetch(`/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify(body) }),
+
+  // Background Jobs (v0.6)
+  createJob: (body: Record<string, unknown>) =>
+    apiFetch('/jobs', { method: 'POST', body: JSON.stringify(body) }),
+  getJob: (jobId: string) => apiFetch(`/jobs/${jobId}`),
+  listJobs: (params?: string) => apiFetch(`/jobs${params ? `?${params}` : ''}`),
+  retryJob: (jobId: string) =>
+    apiFetch(`/jobs/${jobId}/retry`, { method: 'POST' }),
+  getQueueStats: () => apiFetch('/jobs/stats/queue'),
+
+  // Notifications (v0.6)
+  getNotifications: (params?: string) =>
+    apiFetch(`/notifications${params ? `?${params}` : ''}`),
+  getUnreadCount: () => apiFetch('/notifications/unread-count'),
+  markNotificationRead: (id: string) =>
+    apiFetch(`/notifications/${id}/read`, { method: 'PUT' }),
+  markAllNotificationsRead: () =>
+    apiFetch('/notifications/read-all', { method: 'PUT' }),
+  deleteNotification: (id: string) =>
+    apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
+
+  // Ops Dashboard (v0.6)
+  getOpsDashboard: () => apiFetch('/ops/dashboard'),
+  getActiveUsers: () => apiFetch('/ops/active-users'),
+  getWeeklyLearning: (weeks?: number) =>
+    apiFetch(`/ops/weekly-learning${weeks ? `?weeks=${weeks}` : ''}`),
+  getDiagnosticCompletion: () => apiFetch('/ops/diagnostic-completion'),
+  getAiUsage: (days?: number) =>
+    apiFetch(`/ops/ai-usage${days ? `?days=${days}` : ''}`),
+  getAccuracyBySubject: () => apiFetch('/ops/accuracy-by-subject'),
+  getAssignmentCompletion: () => apiFetch('/ops/assignment-completion'),
+  getAtRiskStudents: (days?: number) =>
+    apiFetch(`/ops/at-risk-students${days ? `?days=${days}` : ''}`),
+  getKbFreshness: () => apiFetch('/ops/kb-freshness'),
+  getPracticumParticipation: () => apiFetch('/ops/practicum-participation'),
+  getFailureRates: (hours?: number) =>
+    apiFetch(`/ops/failure-rates${hours ? `?hours=${hours}` : ''}`),
+  getRealtimeMetrics: () => apiFetch('/ops/metrics'),
+
+  // Cost Tracking (v0.6)
+  getDailyCosts: (params?: string) =>
+    apiFetch(`/cost/daily${params ? `?${params}` : ''}`),
+  getCostByProvider: (params?: string) =>
+    apiFetch(`/cost/by-provider${params ? `?${params}` : ''}`),
+  getCostByRole: (params?: string) =>
+    apiFetch(`/cost/by-role${params ? `?${params}` : ''}`),
+  getMyUsage: (days?: number) =>
+    apiFetch(`/cost/my-usage${days ? `?days=${days}` : ''}`),
+  getMyQuota: () => apiFetch('/cost/my-quota'),
+  getModelRouting: (requestType?: string) =>
+    apiFetch(`/cost/routing${requestType ? `?request_type=${requestType}` : ''}`),
+  triggerCostAggregation: (date?: string) =>
+    apiFetch(`/cost/aggregate${date ? `?target_date=${date}` : ''}`, { method: 'POST' }),
 };

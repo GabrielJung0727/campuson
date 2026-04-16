@@ -257,3 +257,76 @@ class PracticumMode(str, enum.Enum):
     SELF = "SELF"          # 학생 자체 체크
     VIDEO = "VIDEO"        # 영상 업로드 + AI 평가
     LIVE = "LIVE"          # 교수 실시간 세션
+
+
+# ── 백그라운드 잡 (v0.6) ──
+
+
+class JobType(str, enum.Enum):
+    """백그라운드 작업 유형."""
+
+    PDF_EXTRACT = "PDF_EXTRACT"          # PDF → 텍스트 추출
+    CHUNKING = "CHUNKING"                # 문서 → 청크 분할
+    EMBEDDING = "EMBEDDING"              # 청크 → 임베딩 생성
+    BULK_QUESTION_GEN = "BULK_QUESTION_GEN"  # 문제 대량 생성
+    STATS_AGGREGATE = "STATS_AGGREGATE"  # 학습 통계 집계
+    RECOMMENDATION = "RECOMMENDATION"    # 추천 모델 계산
+    PRACTICUM_POST = "PRACTICUM_POST"    # 실습 결과 후처리
+    AI_LOG_ANALYSIS = "AI_LOG_ANALYSIS"  # AI 피드백 로그 분석
+    EMAIL_SEND = "EMAIL_SEND"            # 메일/알림 발송
+    COST_AGGREGATE = "COST_AGGREGATE"    # 비용 집계
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            JobType.PDF_EXTRACT: "PDF 텍스트 추출",
+            JobType.CHUNKING: "문서 청크 분할",
+            JobType.EMBEDDING: "임베딩 생성",
+            JobType.BULK_QUESTION_GEN: "문제 대량 생성",
+            JobType.STATS_AGGREGATE: "학습 통계 집계",
+            JobType.RECOMMENDATION: "추천 모델 계산",
+            JobType.PRACTICUM_POST: "실습 결과 후처리",
+            JobType.AI_LOG_ANALYSIS: "AI 로그 분석",
+            JobType.EMAIL_SEND: "메일 발송",
+            JobType.COST_AGGREGATE: "비용 집계",
+        }[self]
+
+
+class JobStatus(str, enum.Enum):
+    """백그라운드 작업 상태."""
+
+    PENDING = "PENDING"        # 대기중
+    RUNNING = "RUNNING"        # 실행중
+    SUCCESS = "SUCCESS"        # 완료
+    FAILED = "FAILED"          # 실패
+    RETRYING = "RETRYING"      # 재시도중
+    DEAD_LETTER = "DEAD_LETTER"  # 최종 실패 (dead-letter)
+
+
+# ── 알림 (v0.6) ──
+
+
+class NotificationCategory(str, enum.Enum):
+    """알림 카테고리."""
+
+    ASSIGNMENT_DUE = "ASSIGNMENT_DUE"          # 과제 마감 임박
+    DIAGNOSTIC_REMINDER = "DIAGNOSTIC_REMINDER"  # 진단 테스트 미완료
+    PROFESSOR_FEEDBACK = "PROFESSOR_FEEDBACK"  # 교수 피드백 도착
+    WEAK_AREA_REVIEW = "WEAK_AREA_REVIEW"      # 취약 영역 복습 추천
+    PRACTICUM_SCHEDULE = "PRACTICUM_SCHEDULE"  # 실습 시험 일정
+    ANNOUNCEMENT = "ANNOUNCEMENT"              # 공지사항
+    KB_UPDATE = "KB_UPDATE"                    # 지식베이스 업데이트
+    SYSTEM = "SYSTEM"                          # 시스템 알림
+
+    @property
+    def label_ko(self) -> str:
+        return {
+            NotificationCategory.ASSIGNMENT_DUE: "과제 마감 임박",
+            NotificationCategory.DIAGNOSTIC_REMINDER: "진단 테스트 미완료",
+            NotificationCategory.PROFESSOR_FEEDBACK: "교수 피드백 도착",
+            NotificationCategory.WEAK_AREA_REVIEW: "취약 영역 복습 추천",
+            NotificationCategory.PRACTICUM_SCHEDULE: "실습 시험 일정",
+            NotificationCategory.ANNOUNCEMENT: "공지사항",
+            NotificationCategory.KB_UPDATE: "지식베이스 업데이트",
+            NotificationCategory.SYSTEM: "시스템",
+        }[self]

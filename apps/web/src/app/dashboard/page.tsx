@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
   const [percentile, setPercentile] = useState<number | null>(null);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -24,6 +25,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
+      api.getUnreadCount()
+        .then((d: any) => setUnreadNotifs(d.unread_count || 0))
+        .catch(() => {});
       api.getMyDiagnostic()
         .then((data: unknown) => { setHasDiagnostic(!!(data as { completed_at: string | null }).completed_at); })
         .catch(() => setHasDiagnostic(false));
@@ -65,6 +69,17 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/notifications"
+            className="relative rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 transition"
+          >
+            🔔
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
+          </Link>
           <Link
             href="/account"
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 transition"
@@ -212,19 +227,33 @@ export default function DashboardPage() {
         )}
 
         {user.role === 'ADMIN' && (
-          <Link href="/admin" className="rounded-xl border border-purple-200 bg-purple-50 p-6 shadow-sm transition hover:shadow-md">
-            <div className="text-2xl">⚙️</div>
-            <h3 className="mt-2 font-semibold text-purple-800">관리자</h3>
-            <p className="mt-1 text-xs text-purple-600">시스템 운영</p>
-          </Link>
+          <>
+            <Link href="/admin" className="rounded-xl border border-purple-200 bg-purple-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">⚙️</div>
+              <h3 className="mt-2 font-semibold text-purple-800">관리자</h3>
+              <p className="mt-1 text-xs text-purple-600">시스템 운영</p>
+            </Link>
+            <Link href="/admin/ops" className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">📈</div>
+              <h3 className="mt-2 font-semibold text-indigo-800">운영 대시보드</h3>
+              <p className="mt-1 text-xs text-indigo-600">메트릭 · 비용 · 장애</p>
+            </Link>
+          </>
         )}
 
         {user.role === 'DEVELOPER' && (
-          <Link href="/dev" className="rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm transition hover:shadow-md">
-            <div className="text-2xl">🛠</div>
-            <h3 className="mt-2 font-semibold text-red-800">개발자 센터</h3>
-            <p className="mt-1 text-xs text-red-600">설정 · 모니터링 · LLM</p>
-          </Link>
+          <>
+            <Link href="/dev" className="rounded-xl border border-red-200 bg-red-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">🛠</div>
+              <h3 className="mt-2 font-semibold text-red-800">개발자 센터</h3>
+              <p className="mt-1 text-xs text-red-600">설정 · 모니터링 · LLM</p>
+            </Link>
+            <Link href="/admin/ops" className="rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm transition hover:shadow-md">
+              <div className="text-2xl">📈</div>
+              <h3 className="mt-2 font-semibold text-indigo-800">운영 대시보드</h3>
+              <p className="mt-1 text-xs text-indigo-600">메트릭 · 비용 · 장애</p>
+            </Link>
+          </>
         )}
       </div>
     </main>
